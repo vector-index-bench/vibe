@@ -1,0 +1,73 @@
+binary:
+  hamming:
+  - base_args: ['@metric']
+    constructor: PyNNDescent
+    disabled: false
+    singularity_image: pynndescent
+    module: vibe.algorithms.pynndescent
+    name: pynndescent
+    run_groups:
+      diversify-1:
+        args: [[20, 40, 60, 80], [0.5, 1.0, 1.5, 2.0, 3.0], [1.0]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+      diversify-05:
+        args: [[20, 40, 60, 80], [1.0], [0.50]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+uint8:
+  euclidean:
+  - base_args: ['@metric']
+    constructor: PyNNDescent
+    disabled: false
+    singularity_image: pynndescent
+    module: vibe.algorithms.pynndescent
+    name: pynndescent
+    run_groups:
+      diversify-1:
+        args: [[10, 20, 40, 60], [0.5, 1.0, 1.5, 2.0, 3.0], [1.0]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+      diversify-05:
+        args: [[10, 20, 40, 60], [1.0], [0.50]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+float:
+  cosine:
+  - base_args: ['@metric']
+    constructor: PyNNDescent
+    disabled: false
+    singularity_image: pynndescent
+    module: vibe.algorithms.pynndescent
+    name: pynndescent
+    run_groups:
+      diversify-1:
+        args: [[40, 80, 120], [0.5, 1.0, 1.5, 2.0, 3.0], [1.0]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+      diversify-05:
+        args: [[40, 80, 120], [1.0], [0.50]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+  normalized:
+  - base_args: ['@metric']
+    constructor: PyNNDescent
+    disabled: false
+    singularity_image: pynndescent
+    module: vibe.algorithms.pynndescent
+    name: pynndescent
+    run_groups:
+      diversify-1:
+        args: [[40, 80, 120], [0.5, 1.0, 1.5, 2.0, 3.0], [1.0]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+      diversify-05:
+        args: [[40, 80, 120], [1.0], [0.50]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+  euclidean:
+  - base_args: ['@metric']
+    constructor: PyNNDescent
+    disabled: false
+    singularity_image: pynndescent
+    module: vibe.algorithms.pynndescent
+    name: pynndescent
+    run_groups:
+      diversify-1:
+        args: [[10, 20, 40, 60], [0.5, 1.0, 1.5, 2.0, 3.0], [1.0]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]
+      diversify-05:
+        args: [[10, 20, 40, 60], [1.0], [0.50]]
+        query_args: [[0.0, 0.01, 0.02, 0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.2, 0.24, 0.28, 0.32, 0.36]]

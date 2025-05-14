@@ -1,0 +1,24 @@
+uint8:
+  euclidean:
+  - base_args: ['@metric']
+    constructor: Vamana
+    disabled: false
+    singularity_image: diskann
+    module: vibe.algorithms.diskann
+    name: vamana(diskann)
+    run_groups:
+      diskann:
+        args: [[32, 64], [128], [1.05, 1.10, 1.15, 1.20]]
+        query_args: [[100, 125, 150, 200, 300, 400, 500, 600, 800, 1000]]
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: Vamana
+    disabled: false
+    singularity_image: diskann
+    module: vibe.algorithms.diskann
+    name: vamana(diskann)
+    run_groups:
+      diskann:
+        args: [[32, 64], [128], [1.05, 1.10, 1.15, 1.20]]
+        query_args: [[100, 125, 150, 200, 300, 400, 500, 600, 800, 1000]]

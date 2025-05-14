@@ -1,0 +1,33 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+    mkdir -p /cache
+    export TMPDIR=/cache
+
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+    CUDA_VERSION="12.8.1"
+    CUDA_INSTALLER="cuda_12.8.1_570.124.06_linux.run"
+    wget https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_INSTALLER}
+
+    chmod +x ${CUDA_INSTALLER}
+    ./${CUDA_INSTALLER} --silent --toolkit --override
+    rm ${CUDA_INSTALLER}
+    
+    export PATH=/usr/local/cuda/bin:${PATH}
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+
+    git clone https://github.com/cgtuebingen/ggnn
+    
+    cd ggnn
+    git config --global --add safe.directory '*'
+    git reset --hard 2d03b36362bc824e37099092eabb95172ec18b64
+
+    pip install .
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+%environment
+    export PATH=/usr/local/cuda/bin:${PATH}
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}

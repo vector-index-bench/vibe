@@ -1,0 +1,14 @@
+.DS_Store
+*.pyc
+*.o
+
+data/*
+
+*.log
+
+results/*
+!results/*.png
+*.parquet
+plots/*.png
+
+venv

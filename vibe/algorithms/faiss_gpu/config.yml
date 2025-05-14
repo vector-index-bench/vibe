@@ -1,0 +1,24 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: FaissGPUIVF
+    disabled: false
+    gpu: true
+    singularity_image: faiss_gpu
+    module: vibe.algorithms.faiss_gpu
+    name: faiss-gpu-ivf
+    run_groups:
+      base:
+        args: [[512, 1024, 2048, 4096, 8192], [0, 1]]
+        query_args: [[4, 8, 16, 32, 64, 96, 128, 256]]
+  - base_args: ['@metric']
+    constructor: FaissGPUIVFPQ
+    disabled: true
+    gpu: true
+    singularity_image: faiss_gpu
+    module: vibe.algorithms.faiss_gpu
+    name: faiss-gpu-ivfpq
+    run_groups:
+      base:
+        args: [[512, 1024, 2048, 4096], [20, 56, 64, 96]]
+        query_args: [[4, 8, 16, 32, 64, 96, 128, 256]]

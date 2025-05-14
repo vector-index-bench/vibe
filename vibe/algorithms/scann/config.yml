@@ -1,0 +1,45 @@
+float:
+  cosine:
+  - base_args: ['@metric']
+    constructor: Scann
+    disabled: false
+    singularity_image: scann
+    module: vibe.algorithms.scann
+    name: scann
+    run_groups:
+      scann:
+        args: [[1024, 2048], [.nan, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6], [2]]
+        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
+  ip:
+  - base_args: ['@metric']
+    constructor: Scann
+    disabled: false
+    singularity_image: scann
+    module: vibe.algorithms.scann
+    name: scann
+    run_groups:
+      scann:
+        args: [[1024, 2048], [.nan, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6], [2]]
+        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
+  normalized:
+  - base_args: ['@metric']
+    constructor: Scann
+    disabled: false
+    singularity_image: scann
+    module: vibe.algorithms.scann
+    name: scann
+    run_groups:
+      scann:
+        args: [[1024, 2048], [.nan, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6], [2]]
+        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
+  euclidean:
+  - base_args: ['@metric']
+    constructor: Scann
+    disabled: false
+    singularity_image: scann
+    module: vibe.algorithms.scann
+    name: scann
+    run_groups:
+      scann:
+        args: [[1024, 1536, 2048], [.nan], [2, 4]]
+        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]

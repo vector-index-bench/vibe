@@ -1,0 +1,5 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  pip install --no-cache-dir scann==1.4.0

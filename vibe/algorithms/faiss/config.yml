@@ -1,0 +1,171 @@
+binary:
+  hamming:
+  - base_args: ['@metric']
+    constructor: FaissBinaryIVF
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: ivf(faiss)
+    run_groups:
+      base-512:
+        args: [[512]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64]]
+      base-1024:
+        args: [[1024]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128]]
+      base-2048:
+        args: [[2048]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256]]
+      base-4096:
+        args: [[4096]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]]
+  - base_args: ['@metric']
+    constructor: FaissBinaryHNSW
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: hnsw(faiss)
+    run_groups:
+      base:
+        args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500]]
+        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+uint8:
+  euclidean:
+  - base_args: ['@metric']
+    constructor: FaissIVFSQ
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: ivf(faiss)
+    run_groups:
+      base-512:
+        args: [[512]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64]]
+      base-1024:
+        args: [[1024]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128]]
+      base-2048:
+        args: [[2048]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256]]
+      base-4096:
+        args: [[4096]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]]
+  - base_args: ['@metric']
+    constructor: FaissHNSWQ
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: hnswq(faiss)
+    run_groups:
+      base:
+        args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500], [1]]
+        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+  - base_args: ['@metric']
+    constructor: FaissNSGQ
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: nsgq(faiss)
+    run_groups:
+      base:
+        args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [1]]
+        query_args: [[32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]]
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: FaissIVF
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: ivf(faiss)
+    run_groups:
+      base-512:
+        args: [[512]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64]]
+      base-1024:
+        args: [[1024]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128]]
+      base-2048:
+        args: [[2048]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256]]
+      base-4096:
+        args: [[4096]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]]
+  - base_args: ['@metric']
+    constructor: FaissIVFRaBitQ
+    disabled: true
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: ivf-rabitq(faiss)
+    run_groups:
+      base-512:
+        args: [[512]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64], [0, 2, 4, 8, 16]]
+      base-1024:
+        args: [[1024]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128], [0, 2, 4, 8, 16]]
+      base-2048:
+        args: [[2048]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256], [0, 2, 4, 8, 16]]
+      base-4096:
+        args: [[4096]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512], [0, 2, 4, 8, 16]]
+  - base_args: ['@metric']
+    constructor: FaissIVFPQfs
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: ivfpqfs(faiss)
+    run_groups:
+      base-512:
+        args: [[512], [0]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64], [0, 2, 4, 8, 16]]
+      base-1024:
+        args: [[1024], [0]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128], [0, 2, 4, 8, 16]]
+      base-2048:
+        args: [[2048], [0]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256], [0, 2, 4, 8, 16]]
+      base-4096:
+        args: [[4096], [0]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512], [0, 2, 4, 8, 16]]
+  - base_args: ['@metric']
+    constructor: FaissHNSW
+    disabled: true
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: hnsw(faiss)
+    run_groups:
+      base:
+        args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500]]
+        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+  - base_args: ['@metric']
+    constructor: FaissHNSWQ
+    disabled: true
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: hnswq(faiss)
+    run_groups:
+      base:
+        args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500], [0]]
+        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+  - base_args: ['@metric']
+    constructor: FaissNSG
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: nsg(faiss)
+    run_groups:
+      base:
+        args: [[4, 8, 12, 16, 24, 36, 48, 64, 96]]
+        query_args: [[32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]]
+  - base_args: ['@metric']
+    constructor: FaissNSGQ
+    disabled: true
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: nsgq(faiss)
+    run_groups:
+      base:
+        args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [0]]
+        query_args: [[32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]]

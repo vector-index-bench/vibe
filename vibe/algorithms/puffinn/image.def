@@ -1,0 +1,11 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  git clone https://github.com/puffinn/puffinn
+
+  cd puffinn
+  git config --global --add safe.directory /puffinn
+  git reset --hard fd86b0d6591450dcaf32aa8f7bd988f7301adb1a
+
+  python3 setup.py install

@@ -1,0 +1,42 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%files
+  dataset_environment.yml /environment.yml
+
+%post
+  apt-get update
+  apt-mark hold openssh-client
+  apt-get install -y bzip2 curl libxml2 git
+
+  apt-get clean
+  rm -rf /var/lib/apt/lists/*
+
+  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/2.1.1 | tar -xvj bin/micromamba
+
+  mkdir -p /opt/env/micromamba
+
+  export MAMBA_ROOT_PREFIX=/opt/env/micromamba
+  eval "$(micromamba shell hook -s posix)"
+  micromamba activate
+
+  mkdir -p /cache
+  export TMPDIR=/cache
+
+  micromamba install -y -q -f /environment.yml
+  micromamba clean --all --yes
+
+  pip install --no-cache-dir torch==2.7.0 torchvision==0.22.0
+  pip install --no-cache-dir timm==1.0.15 transformers==4.51.3 sentence-transformers==4.1.0 accelerate==1.6.0 hf-xet==1.1.0 xformers==0.0.30
+
+  git clone https://github.com/facebookresearch/perception_models/
+  cd perception_models
+  git config --global --add safe.directory '*'
+  git reset --hard 61dd42340bc523e4cad7aa32c6f99793ca00d1da
+  pip install --no-cache-dir ftfy==6.3.1 omegaconf==2.3.0
+
+  echo 'export MAMBA_ROOT_PREFIX=/opt/env/micromamba' >> $SINGULARITY_ENVIRONMENT
+  echo 'eval "$(micromamba shell hook -s posix)"' >> $SINGULARITY_ENVIRONMENT
+  echo 'micromamba activate' >> $SINGULARITY_ENVIRONMENT
+
+  echo 'export CUPY_CACHE_DIR=./.cupy' >> $SINGULARITY_ENVIRONMENT

@@ -1,0 +1,5 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  pip install --no-cache-dir hnswlib==0.8.0

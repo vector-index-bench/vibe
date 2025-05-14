@@ -1,0 +1,7 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  micromamba install -q -y -c rapidsai -c conda-forge -c nvidia cupy cuvs=25.4.0 cuda-version=12.8
+
+  echo 'export CUPY_CACHE_DIR=./.cupy' >> $SINGULARITY_ENVIRONMENT

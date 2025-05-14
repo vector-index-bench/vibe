@@ -1,0 +1,12 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: SymphonyQG
+    disabled: false
+    singularity_image: symphonyqg
+    module: vibe.algorithms.symphonyqg
+    name: symphonyqg
+    run_groups:
+      lorann:
+        args: [[32, 64, 96, 128], [400], [3]]
+        query_args: [[100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 1000, 1500, 2000]]

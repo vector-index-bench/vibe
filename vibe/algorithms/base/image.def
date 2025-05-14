@@ -1,0 +1,30 @@
+Bootstrap: docker
+From: ubuntu:24.04
+
+%files
+  environment.yml /environment.yml
+
+%post
+  apt-get update
+  apt-mark hold openssh-client
+  apt-get install -y build-essential git curl wget cmake
+
+  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/2.1.0 | tar -xvj bin/micromamba
+
+  mkdir -p /opt/env/micromamba
+
+  export MAMBA_ROOT_PREFIX=/opt/env/micromamba
+  eval "$(micromamba shell hook -s posix)"
+  micromamba activate
+
+  micromamba install -y -q -f /environment.yml
+  micromamba clean --all --yes
+
+  echo 'export OMP_NUM_THREADS=1' >> $SINGULARITY_ENVIRONMENT
+  echo 'export MKL_NUM_THREADS=1' >> $SINGULARITY_ENVIRONMENT
+  echo 'export OPENBLAS_NUM_THREADS=1' >> $SINGULARITY_ENVIRONMENT
+  echo 'export TBB_NUM_THREADS=1' >> $SINGULARITY_ENVIRONMENT
+
+  echo 'export MAMBA_ROOT_PREFIX=/opt/env/micromamba' >> $SINGULARITY_ENVIRONMENT
+  echo 'eval "$(micromamba shell hook -s posix)"' >> $SINGULARITY_ENVIRONMENT
+  echo 'micromamba activate' >> $SINGULARITY_ENVIRONMENT

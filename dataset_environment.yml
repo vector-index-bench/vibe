@@ -1,0 +1,22 @@
+name: base
+channels:
+  - conda-forge
+  - nvidia
+  - rapidsai
+  - pytorch
+dependencies:
+  - python=3.11
+  - cupy=13.4.1
+  - cuvs=25.4.0
+  - datasets=3.5.0
+  - einops=0.8.1
+  - faiss-cpu=1.11.0
+  - h5py=3.13.0
+  - litellm
+  - numba=0.61.2
+  - numpy=1.26.4
+  - psutil=7.0.0
+  - scikit-learn=1.6.1
+  - cuda-libraries=12.8.1
+  - cuda-runtime=12.8.1
+  - cuda-toolkit=12.8.1

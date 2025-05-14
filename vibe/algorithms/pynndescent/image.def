@@ -1,0 +1,9 @@
+Bootstrap: localimage
+From: base.sif
+
+%environment
+  NUMBA_CACHE_DIR=/tmp
+  export NUMBA_CACHE_DIR
+
+%post
+  pip install --no-cache-dir pynndescent==0.5.13

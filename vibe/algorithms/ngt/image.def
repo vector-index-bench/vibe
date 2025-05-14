@@ -1,0 +1,24 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  apt install -y --no-install-recommends libblas-dev liblapack-dev
+
+  git clone -b main https://github.com/yahoojapan/ngt.git
+
+  cd ngt
+
+  git config --global --add safe.directory /ngt
+  git reset --hard 83d5896237aad143b3a90b427f2898372531a50e
+
+  mkdir build
+  cd build
+  cmake -DNGTQG_NO_ROTATION=ON -DNGTQG_ZERO_GLOBAL=ON ..
+  make && make install
+  cd ..
+
+  ldconfig
+
+  cd python
+  python3 setup.py bdist_wheel
+  pip install --no-cache-dir dist/ngt-*-linux_x86_64.whl

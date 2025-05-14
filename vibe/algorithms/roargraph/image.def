@@ -1,0 +1,17 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  apt-get install -y --no-install-recommends libboost-dev libboost-program-options-dev
+
+  git clone --recursive https://github.com/matchyc/RoarGraph.git
+
+  cd RoarGraph
+  git config --global --add safe.directory /RoarGraph
+  git checkout add_pyroar
+  git reset --hard f2b49b6f47f16bccde9bc13d8fceffd5ff2dd4aa
+  
+  cd pyroar
+  sed -i '/faiss/d' index_bindings.cpp
+  sed -i '/faiss/d' setup.py
+  pip install .

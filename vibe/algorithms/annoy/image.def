@@ -1,0 +1,5 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  pip install --no-cache-dir annoy==1.17.3

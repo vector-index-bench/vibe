@@ -1,0 +1,8 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  micromamba install -y -q python=3.10
+  micromamba clean --all --yes
+
+  pip install --no-cache-dir glassppy==1.0.5

@@ -1,0 +1,44 @@
+uint8:
+  euclidean:
+  - base_args: ['@metric']
+    constructor: SVSVamana
+    disabled: false
+    singularity_image: svs
+    module: vibe.algorithms.svs
+    name: vamana(svs)
+    run_groups:
+      svs:
+        args: [[32, 64], [1.05, 1.0, 1.15, 1.20], [128]]
+        query_args: [[10, 20, 40, 80, 100, 125, 150, 200, 300, 400, 500, 600, 800, 1000]]
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: SVSVamana
+    disabled: false
+    singularity_image: svs
+    module: vibe.algorithms.svs
+    name: vamana(svs)
+    run_groups:
+      svs:
+        args: [[32, 64], [1.05, 1.10, 1.15, 1.20], [128]]
+        query_args: [[10, 20, 40, 80, 100, 125, 150, 200, 300, 400, 500, 600, 800, 1000]]
+  - base_args: ['@metric']
+    constructor: SVSVamanaLVQ
+    disabled: false
+    singularity_image: svs
+    module: vibe.algorithms.svs
+    name: vamana-lvq(svs)
+    run_groups:
+      svs:
+        args: [[32, 64], [1.05, 1.10, 1.15, 1.20], [128]]
+        query_args: [[10, 20, 40, 80, 100, 125, 150, 200, 300, 400, 500, 600, 800, 1000]]
+  - base_args: ['@metric']
+    constructor: SVSVamanaLeanVec
+    disabled: false
+    singularity_image: svs
+    module: vibe.algorithms.svs
+    name: vamana-leanvec(svs)
+    run_groups:
+      svs:
+        args: [[64], [1.05, 1.1, 1.15, 1.20], [128], [128, 192, 256, 384]]
+        query_args: [[10, 20, 40, 80, 100, 125, 150, 200, 300, 400, 500, 600, 800, 1000]]

@@ -1,0 +1,19 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  apt-get install -y --no-install-recommends libaio-dev libgoogle-perftools-dev libunwind-dev clang-format libboost-dev libboost-program-options-dev libmkl-full-dev libcpprest-dev
+
+  cd /opt
+
+  git clone https://github.com/cmuparlay/ParlayANN.git 
+
+  cd ParlayANN
+  git config --global --add safe.directory '*'
+  git reset --hard 393188145dfdf432092624de16a7c0ed15b0f06d
+  git submodule update --init --recursive
+
+  cd python
+  bash compile.sh
+
+  echo 'export PYTHONPATH=$PYTHONPATH:/opt/ParlayANN/python' >> $SINGULARITY_ENVIRONMENT

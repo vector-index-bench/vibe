@@ -1,0 +1,14 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  apt-get install -y --no-install-recommends ninja-build libeigen3-dev libboost-dev
+
+  git clone https://github.com/NinhPham/FalconnPP
+
+  cd FalconnPP
+  
+  git config --global --add safe.directory /FalconnPP
+  git reset --hard 5fd3f177c4dffdf7b56fb657763eafede5074f1d
+
+  python3 setup.py install

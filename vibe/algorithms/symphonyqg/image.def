@@ -1,0 +1,13 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  git clone https://github.com/gouyt13/SymphonyQG
+
+  cd SymphonyQG
+  git config --global --add safe.directory /SymphonyQG
+  git reset --hard 32a00199a2dafc305a845914cf3b489b6853d754
+
+  cd python
+  pip install --no-cache-dir -r requirements.txt
+  sh build.sh

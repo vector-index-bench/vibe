@@ -1,0 +1,13 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: RoarGraph
+    disabled: false
+    ood: true
+    singularity_image: roargraph
+    module: vibe.algorithms.roargraph
+    name: roargraph
+    run_groups:
+      roargraph:
+        args: [[100], [16, 24, 32, 48, 64, 96], [500]]
+        query_args: [[100, 110, 120, 130, 140, 150, 160, 180, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]]
