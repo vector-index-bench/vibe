@@ -10,7 +10,7 @@ def export_results(path):
     with h5py.File(path) as hfp:
         for query_params in hfp.keys():
             k = hfp[query_params].attrs["count"]
-            dataset = hfp[query_params].attrs["dataset"]
+            dataset = path.parts[1]
             algo = hfp[query_params].attrs["algo"]
             params = hfp[query_params].attrs["name"] + "|" + query_params
             times = hfp[query_params]["times"][:]
@@ -44,9 +44,12 @@ def export_all_results(path, output_summary, output_detail):
     details = []
 
     for path in pathlib.Path(path).glob("**/*.hdf5"):
-        for summary, detail in export_results(path):
-            summaries.append(summary)
-            details.append(detail)
+        try:
+            for summary, detail in export_results(path):
+                summaries.append(summary)
+                details.append(detail)
+        except:
+            pass
 
     summary = pl.DataFrame(summaries)
     summary.write_parquet(output_summary)
@@ -99,6 +102,105 @@ def export_data_info(data_dir, output_file):
     stats.write_parquet(output_file)
 
 
+def mahalanobis_distance_batch(V, Q):
+    if V.ndim != 2:
+        raise ValueError("Input matrix 'V' must be 2-dimensional (each row is a vector).")
+    if Q.ndim != 2:
+        raise ValueError("Input matrix 'Q' must be 2-dimensional.")
+    if V.shape[1] != Q.shape[1]:
+        raise ValueError(
+                f"Dimension mismatch: V columns ({V.shape[1]}) must equal "
+                f"Q columns ({Q.shape[1]})."
+        )
+    if Q.shape[0] < 2:
+        raise ValueError("Input matrix 'Q' must have at least 2 samples (rows).")
+
+    mu = np.mean(Q, axis=0)
+    cov_matrix = np.cov(Q, rowvar=False, ddof=1)
+
+    diff = V - mu 
+
+    if cov_matrix.ndim == 0:
+        variance = cov_matrix.item()
+        if np.isclose(variance, 0):
+            is_zero_diff = np.all(np.isclose(diff, 0), axis=1)
+            distances_sq = np.full(V.shape[0], np.inf)
+            distances_sq[is_zero_diff] = 0.0
+        else:
+            inv_cov = 1.0 / variance
+            distances_sq = (diff**2 * inv_cov).flatten()
+    else:
+        try:
+            inv_cov_matrix = np.linalg.pinv(cov_matrix)
+        except np.linalg.LinAlgError:
+            raise ValueError(
+                    "Covariance matrix is singular and pseudo-inverse could not be computed."
+            )
+
+        temp = diff @ inv_cov_matrix
+        distances_sq = np.sum(temp * diff, axis=1)
+
+    negative_close_to_zero = (distances_sq < 0) & np.isclose(distances_sq, 0)
+    distances_sq[negative_close_to_zero] = 0.0
+
+    if np.any(distances_sq < 0):
+            raise ValueError("Squared Mahalanobis distance is negative for some inputs")
+
+    return np.sqrt(distances_sq)
+
+
+def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import StandardScaler
+
+    pcas = []
+    for path in pathlib.Path(data_dir).glob("**/*.hdf5"):
+        gen = np.random.default_rng(1234)
+        with h5py.File(path) as hfp:
+            name = path.name.replace(".hdf5", "")
+            ic(name)
+            train = hfp["train"][:]
+            test = hfp["test"][:]
+
+            if "binary" in name:
+                train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
+                test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
+
+            if train.dtype != np.float32:
+                train = train.astype(np.float32)
+                test = test.astype(np.float32)
+
+            mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
+            train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
+            train = train[train_sample_indices]
+
+            data_to_data = mahalanobis_distance_batch(train, mahalanobis_sample_train)
+            query_to_data = mahalanobis_distance_batch(test, mahalanobis_sample_train)
+
+            mahalanobis_combined = np.concatenate((data_to_data, query_to_data))
+
+            pca = PCA(n_components=2, random_state=1)
+            scaler = StandardScaler()
+
+            combined = np.vstack([train, test])
+            ic(combined.shape)
+            combined_scaled = scaler.fit_transform(combined)
+            combined_pca = pca.fit_transform(combined_scaled)
+            ic(combined_pca.shape)
+            df = pl.DataFrame(dict(
+                dataset=name,
+                part=np.concatenate((np.repeat("train", train.shape[0]), np.repeat("test", test.shape[0]))),
+                x=combined_pca[:, 0],
+                y=combined_pca[:, 1],
+                mahalanobis_distance_to_data=mahalanobis_combined
+            ))
+            pcas.append(df)
+            
+
+    pcas = pl.concat(pcas)
+    pcas.write_parquet(output_file)
+
+
 def main():
     aparser = argparse.ArgumentParser()
     aparser.add_argument("--results", help="the path to the directory containing results", default="results")
@@ -115,12 +217,17 @@ def main():
     aparser.add_argument(
         "--output-info", help="the path to the file storing the statistics of each dataset", default="data-info.parquet"
     )
+    aparser.add_argument(
+        "--output-pca-mahalanobis", help="the path to the file storing the statistics of each dataset", default="data-pca-mahalanobis.parquet"
+    )
 
     args = aparser.parse_args()
     export_all_results(args.results, args.output_summary, args.output_detail)
     export_query_stats(args.data, args.output_stats)
     export_data_info(args.data, args.output_info)
+    export_pca_and_mahalanobis(args.data, args.output_pca_mahalanobis)
 
 
 if __name__ == "__main__":
     main()
+
