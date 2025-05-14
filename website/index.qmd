@@ -1,0 +1,13 @@
+---
+---
+
+This website hosts the results of VIBE, the Vector Index Benchmark for Embeddings.
+You can use its interactive plots to explore the results of the benchmark.
+In particular, head over to
+
+- the [overview](/overview.html) page to compare all the algorithms across all datasets at a glance
+- the [datasets](/datasets.html) page for detailed information about all the datasets we consider
+- the [tradeoffs](/tradeoff.html) page to explore the tradeoff between recall
+  and query throughput of different index data structures
+- the [algorithm focus](/algorithm_focus.html) page to see the performance of
+  _all_ the configurations we tested for each algorithm.

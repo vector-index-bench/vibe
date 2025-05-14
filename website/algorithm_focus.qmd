@@ -1,0 +1,159 @@
+---
+echo: false
+format:
+  dashboard:
+    orientation: columns
+---
+
+## Column {width=20%}
+
+:::{.card .fill}
+This page allows to inspect all the configurations for any supported algorithm on
+any supported dataset.
+:::
+
+```{ojs}
+//| output: false
+db = DuckDBClient.of({
+	summary: FileAttachment("results/summary.parquet"),
+	querydetail: FileAttachment("results/stats.parquet"),
+});
+alldata = db.sql`select * from summary;`
+algorithms = db.sql`select distinct algorithm from summary;`
+datasets = db.sql`select distinct dataset from summary;`
+
+colors = Array.from(d3["schemeTableau10"]).toReversed();
+ncolors = colors.length;
+```
+
+```{ojs}
+//|output: false
+// This is a bit cumbersome, but this is the way to have a reactive variable
+// that triggers the re-evaluation of the dependent cells:
+//
+//  - https://observablehq.com/framework/reactivity#mutables
+//  - https://observablehq.com/@dralletje/mutable
+mutable_color_map = new Mutable(new Map());
+color_map = mutable_color_map.generator
+```
+
+```{ojs}
+//| fill: false
+//| width: 20%
+viewof selected_dataset = Inputs.select(
+	datasets.map(d => d.dataset),
+	{value: "GLOVE", label: "select dataset"}
+);
+viewof selected_algorithm = Inputs.select(
+	algorithms.map(d => d.algorithm),
+	{value: "lorann", label: "select algorithm"}
+);
+k_values = db.sql`select distinct k from summary;`
+viewof k_value = Inputs.select(k_values.map(d => d.k), {value: 10, label: "value of k"});
+```
+
+## Row
+
+
+```{ojs}
+//| output: false
+pareto = db.sql`WITH
+ranked_points AS (
+	SELECT
+		algorithm, dataset, params, qps, recall,
+		ROW_NUMBER() OVER (PARTITION BY algorithm, dataset ORDER BY qps) AS rank_qps,
+		ROW_NUMBER() OVER (PARTITION BY algorithm, dataset ORDER BY recall) AS rank_recall
+	FROM summary
+	where dataset = ${selected_dataset} and k = ${k_value} and algorithm = ${selected_algorithm}
+),
+non_dominated AS (
+	SELECT
+		r1.algorithm, r1.dataset, r1.params, r1.qps, r1.recall
+	FROM ranked_points r1
+	LEFT JOIN ranked_points r2
+	ON r1.algorithm = r2.algorithm
+	AND r1.dataset = r2.dataset
+	AND ((r1.rank_qps < r2.rank_qps AND r1.rank_recall <= r2.rank_recall) OR
+		 (r1.rank_qps <= r2.rank_qps AND r1.rank_recall < r2.rank_recall))
+	WHERE r2.recall IS NULL -- no dominating point
+)
+SELECT * FROM non_dominated;
+`
+
+other_configurations = db.sql`
+	SELECT algorithm, dataset, params, qps, recall
+	FROM summary
+	WHERE dataset = ${selected_dataset} and k = ${k_value} and algorithm = ${selected_algorithm};
+`
+```
+
+```{ojs}
+//| height: 100%
+//| title: "Tradeoff between quality (recall) and efficiency (queries per second)"
+viewof paretoplot = Plot.plot({
+	style: {fontSize: "10pt"},
+  x: {domain: [d3.min(other_configurations, d => d.recall), 1], grid: true},
+  y: {type: "log", grid: true},
+  marks: [
+		Plot.ruleY([1]),
+		Plot.ruleX([0]),
+		Plot.dot(other_configurations, {
+			  x: "recall",
+			  y: "qps",
+			  stroke: "gray",
+			  z: "algorithm",
+			  marker: "circle-stroke",
+			  tip: false
+	    }),
+		Plot.line(pareto, {
+			  x: "recall",
+			  y: "qps",
+			  z: "algorithm",
+			  marker: "circle-stroke",
+			  tip: false
+	    }),
+		Plot.tip(other_configurations, Plot.pointer({
+			  x: "recall",
+			  y: "qps",
+			  title: (d) => `${d.algorithm}\n${d.params}\nrecall: ${d.recall}\nqps:${d.qps}}`
+	    })),
+  ]
+})
+```
+
+
+```{ojs}
+//| output: false
+pareto_selected = paretoplot ?? {algorithm: '', dataset: '', params: ''};
+focus_url = `${window.location.origin}${window.location.pathname.slice(0, -"algorithm_focus.html".length)}results/${selected_dataset}__detail.parquet`;
+console.log(focus_url);
+focusdata = db.query(`
+	SELECT *
+	FROM (SELECT * FROM '${focus_url}')
+	NATURAL JOIN querydetail
+	WHERE algorithm = ?1
+	  AND dataset = ?2
+	  AND params = ?3
+`, [
+	pareto_selected.algorithm,
+	pareto_selected.dataset,
+	pareto_selected.params,
+]);
+console.log(window.location.origin);
+```
+
+```{ojs}
+//| title: "Distribution of recall values for the selected configuration"
+
+Plot.plot({
+	//style: {fontSize: "10pt"},
+  x: {domain: [-0.01, 1.01], grid: false},
+  y: {domain: [0, 1], grid: true},
+	marks: [
+		Plot.ruleY([0]),
+		Plot.ruleX([d3.mean(focusdata, (d) => d.recall)], {stroke: "red"}),
+		Plot.dot(focusdata, Plot.groupX({y: "proportion"}, {x: "recall", fill: "black", r: 6})),
+		Plot.ruleX(focusdata, Plot.groupX({y: "proportion"}, {x: "recall", strokeWidth: 3})),
+	]
+});
+```

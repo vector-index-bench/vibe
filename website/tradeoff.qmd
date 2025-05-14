@@ -1,0 +1,212 @@
+---
+echo: false
+format:
+  dashboard:
+    orientation: columns
+---
+
+## Column {width=20%}
+
+:::{.card .fill}
+To inspect the tradeoffs between recall and throughput, select a dataset and a value of $k$.
+Then, using the legend below, select the algorithms you are interested in.
+
+Hovering with the mouse on the central pane will "slice" through the plot, showing in the right pane
+the ranking of the algorithms at the recall highlighted by the red line.
+:::
+
+```{ojs}
+//| output: false
+db = DuckDBClient.of({
+	summary: FileAttachment("results/summary.parquet"),
+});
+alldata = db.sql`select * from summary;`
+algorithms = db.sql`select distinct algorithm from summary order by all;`
+datasets = db.sql`select distinct dataset from summary;`
+
+colors = Array.from(d3["schemeTableau10"]).toReversed();
+ncolors = colors.length;
+```
+
+```{ojs}
+//|output: false
+// This is a bit cumbersome, but this is the way to have a reactive variable
+// that triggers the re-evaluation of the dependent cells:
+//
+//  - https://observablehq.com/framework/reactivity#mutables
+//  - https://observablehq.com/@dralletje/mutable
+mutable_color_map = new Mutable(new Map([
+	["lorann", colors.pop()],
+	["glass", colors.pop()],
+	["symphonyqg", colors.pop()],
+]));
+color_map = mutable_color_map.generator
+```
+
+```{ojs}
+//| fill: false
+//| width: 20%
+viewof selected_dataset = Inputs.select(
+	datasets.map(d => d.dataset),
+	{value: "GLOVE", label: "select dataset"}
+);
+k_values = db.sql`select distinct k from summary;`
+viewof k_value = Inputs.select(k_values.map(d => d.k), {value: 10, label: "value of k"});
+```
+
+```{ojs}
+//| output: false
+
+d3.select("#legend")
+	.selectAll("div")
+	.data(algorithms)
+	.join("div")
+	.style("border-bottom", d => `solid 6px ${(color_map.has(d.algorithm))? color_map.get(d.algorithm) : "lightgray"}`)
+	.style("border-top", "solid 1px lightgray")
+	.style("border-left", "solid 1px lightgray")
+	.style("border-right", "solid 1px lightgray")
+	.style("border-radius", "4px")
+	.style("padding-right", "5pt")
+	.style("padding-left", "5pt")
+	.on("click", (event, d)=> {
+		const key = d.algorithm;
+		let cm = new Map(color_map);
+		console.log("Algorithm " + key);
+		if (cm.has(key)) {
+			const color = cm.get(key);
+			console.log("Returning color to the pool " + color);
+			cm.delete(key);
+			colors.push(color);
+		} else {
+			const color = colors.pop();
+			console.log("Got color from the pool " + color);
+			if (color !== undefined) {
+				cm.set(key, color);
+			}
+		}
+		mutable_color_map.value = cm;
+		console.log(color_map);
+		console.log(colors);
+		console.log(event.target);
+	})
+	.text(d => d.algorithm);
+```
+
+```{ojs}
+//| title: Algorithms
+html`
+<p>Select up to ${ncolors} algorithms to highlight them in the plot.</p>
+<div id="legend" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 4pt;">
+</div>
+`
+```
+
+## Column
+
+### Row
+
+```{ojs}
+//| output: false
+pareto = db.sql`WITH
+ranked_points AS (
+	SELECT
+		algorithm, dataset, params, qps, recall,
+		ROW_NUMBER() OVER (PARTITION BY algorithm, dataset ORDER BY qps) AS rank_qps,
+		ROW_NUMBER() OVER (PARTITION BY algorithm, dataset ORDER BY recall) AS rank_recall
+	FROM summary
+	where dataset = ${selected_dataset} and k = ${k_value}
+),
+non_dominated AS (
+	SELECT
+		r1.algorithm, r1.dataset, r1.params, r1.qps, r1.recall
+	FROM ranked_points r1
+	LEFT JOIN ranked_points r2
+	ON r1.algorithm = r2.algorithm
+	AND r1.dataset = r2.dataset
+	AND ((r1.rank_qps < r2.rank_qps AND r1.rank_recall <= r2.rank_recall) OR
+		 (r1.rank_qps <= r2.rank_qps AND r1.rank_recall < r2.rank_recall))
+	WHERE r2.recall IS NULL -- no dominating point
+)
+SELECT * FROM non_dominated;
+`
+highlighted = pareto.filter(d => color_map.has(d.algorithm));
+background = pareto.filter(d => !color_map.has(d.algorithm));
+```
+
+```{ojs}
+//| height: 100%
+//| title: "Tradeoff between quality (recall) and efficiency (queries per second)"
+viewof paretoplot = Plot.plot({
+	style: {fontSize: "10pt"},
+  x: {domain: [0, 1], grid: true},
+  y: {type: "log", grid: true},
+  marks: [
+		Plot.ruleY([1]),
+		Plot.ruleX([0]),
+		Plot.line(background, {
+			  x: "recall",
+			  y: "qps",
+			  stroke: "lightgray",
+			  z: "algorithm",
+			  marker: "circle-stroke",
+			  tip: false
+	    }),
+		Plot.line(highlighted, {
+			  x: "recall",
+			  y: "qps",
+			  stroke: (d) => color_map.get(d.algorithm),
+			  z: "algorithm",
+			  marker: "circle-stroke",
+			  tip: false
+	    }),
+	  Plot.ruleX(background, Plot.pointerX({x: "recall", py: "qps", stroke: "red"}))
+  ]
+})
+```
+
+```{ojs}
+//| output: false
+dynamic_recall_threshold = (paretoplot)? paretoplot.recall : null;
+rankdata = db.sql`
+	SELECT dataset, algorithm, k, max(qps) as qps
+	FROM summary
+	WHERE recall > ${dynamic_recall_threshold}
+	AND dataset = ${selected_dataset}
+	GROUP BY dataset, algorithm, k
+`
+half = d3.max(rankdata, d => d.qps) / 2
+console.log(half)
+```
+
+```{ojs}
+//| title: Ranking of algorithms at recall higher than the selected threshold
+Plot.plot({
+	style: {fontSize: "12pt"},
+	marginLeft: 180,
+	marks: [
+		Plot.ruleY([0]),
+		Plot.barX(rankdata, {
+			y: "algorithm",
+			x: "qps",
+			fill: d => color_map.has(d.algorithm)? color_map.get(d.algorithm) : "gray",
+			sort: {y: "-x"}
+		}),
+		Plot.text(rankdata.filter(d => d.qps < half), {
+			y: "algorithm",
+			x: "qps",
+			text: d => d3.format(".0f")(d.qps) + " qps",
+			dx: 10,
+			textAnchor: "start",
+			fill: "black"
+		}),
+		Plot.text(rankdata.filter(d => d.qps >= half), {
+			y: "algorithm",
+			x: "qps",
+			text: d => d3.format(".0f")(d.qps) + " qps",
+			dx: -10,
+			textAnchor: "end",
+			fill: "white"
+		})
+	]
+})
+```

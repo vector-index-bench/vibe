@@ -1,0 +1,184 @@
+---
+echo: false
+---
+
+In the VIBE benchmark we consider datasets whose queries
+are both
+<span style="text-decoration: underline; text-decoration-thickness: .1em; text-decoration-color: #1f77b4">
+  in-distribution
+</span>
+and
+<span style="text-decoration: underline; text-decoration-thickness: .1em; text-decoration-color: #ff7f0e">
+  out-of-distribution</span>.
+
+The following table reports information about the size and dimensionality of each dataset, along with links
+that allow to download them.
+
+
+```{ojs}
+//| output: false
+db = DuckDBClient.of({
+	vizdata: FileAttachment("results/data-pca-mahalanobis.parquet"),
+	stats: FileAttachment("results/stats.parquet"),
+  basics: {file: FileAttachment("dataset_basics.csv"), header: true},
+  info: FileAttachment("results/data-info.parquet")
+});
+id_datasets = db.sql`select * from basics natural join info where type = 'in-distribution' order by dataset`;
+ood_datasets = db.sql`select * from basics natural join info where type = 'out-of-distribution' order by dataset`;
+datasets = db.sql`select * from basics natural join info where type in ('in-distribution', 'out-of-distribution') order by type, dataset`;
+
+colors = Array.from(d3["schemeTableau10"]).toReversed();
+```
+
+```{ojs}
+//| height: 10
+type_colors = new Map([
+  ["in-distribution", "#1f77b4"],
+  ["out-of-distribution", "#ff7f0e"]
+])
+
+viewof selected_dataset = Inputs.table(datasets,{
+  format: {
+    dataset: dataset => html`<a href="https://huggingface.co/datasets/ejaasaari/annbench/blob/main/${dataset}.hdf5">${dataset}</a>`,
+    type: t => html`<div style="
+      width: 3ex;
+      height: 3ex;
+      background: ${type_colors.get(t)}
+    "></div>`
+  },
+  width: {
+    dataset: 280
+  },
+  multiple: false,
+  value: datasets[0]
+})
+```
+
+Here below we report the first two PCA components of 
+<span style="text-decoration: underline; text-decoration-thickness: .1em; text-decoration-color: #1f77b4">
+  data
+</span>
+and
+<span style="text-decoration: underline; text-decoration-thickness: .1em; text-decoration-color: #ff7f0e">
+  queries
+</span>
+for each dataset.
+Selecting a dataset in the table above allows to update the visualization.
+
+Along with the PCA we display
+the distribution of Mahalanobis distances between
+the 
+<span style="text-decoration: underline; text-decoration-thickness: .1em; text-decoration-color: #1f77b4">
+  data points
+</span>
+and the data
+and the
+<span style="text-decoration: underline; text-decoration-thickness: .1em; text-decoration-color: #ff7f0e">
+  query points
+</span>
+and the data.
+
+```{ojs}
+//| output: false
+selected_data = db.sql`select * from vizdata where dataset = ${selected_dataset.dataset}`;
+kde = require('fast-kde');
+distances_data = db.sql`select mahalanobis_distance_to_data from vizdata where dataset = ${selected_dataset.dataset} and part = 'train'`;
+density_data = kde.density1d(distances_data.map(d => d.mahalanobis_distance_to_data), { bandwidth: 3, bins: 512, pad: 4 });
+distances_query = db.sql`select mahalanobis_distance_to_data from vizdata where dataset = ${selected_dataset.dataset} and part = 'test'`;
+density_query = kde.density1d(distances_query.map(d => d.mahalanobis_distance_to_data), { bandwidth: 3, bins: 512, pad: 4 });
+
+bw = 1;
+```
+
+```{ojs}
+//| layout-nrow: 1
+//| column: page
+Plot.plot({
+  width: width/4,
+  height: width/4,
+  axis: null,
+  marks: [
+    Plot.dot(selected_data, {x: "x", y: "y", stroke: "part"})
+  ]
+})
+
+
+Plot.plot({
+  width: width/4,
+  height: width/4,
+  y: {axis: null},
+  x: {label: "Mahalanobis distance distribution to data"},
+  marks: [
+    Plot.lineY(density_data.bandwidth(bw), {x: 'x', y: 'y', stroke: '#1f77b4', fill: '#1f77b4', fillOpacity: 0.5 }),
+    Plot.lineY(density_query.bandwidth(bw), {x: 'x', y: 'y', stroke: '#ff7f0e', fill: '#ff7f0e', fillOpacity: 0.5 }),
+    Plot.ruleY([0])
+  ]
+})
+```
+
+```{ojs}
+//| output: false
+density_transform = function(data, facets) {
+  // Separately compute densities for each facet
+  const densities = facets.map((facet) => {
+    // `facet` is a `UInt32Array`, so it needs to be copied before we can use it like this
+    const facetData = [...facet].map((index) => data[index]);
+    const iter = (new Set(facetData.map(d => d.dataset))).values();
+    const dataset = iter.next().value;
+    console.log(dataset);
+
+    // `density1d` also needs to be copied to produce (x, y) pairs for our plot
+    const densityData = [
+      ...kde
+        .density1d(facetData, {
+          x: "rc100",
+          pad,
+          bins,
+          //extent: [0, 3]
+        })
+        .points("point", "density")
+    ];
+
+    densityData.forEach(d => d["dataset"] = dataset);
+    return densityData;
+  });
+
+  // Simultaneously flatten the array and compute the new facets
+
+  let newData = [];
+  let newFacets = [];
+  let index = 0;
+
+  for (let density of densities) {
+    let facet = [];
+    for (let facetIndex = 0; facetIndex < density.length; facetIndex++) {
+      newData.push(density[facetIndex]);
+      facet.push(index);
+      index++;
+    }
+    newFacets.push(facet);
+  }
+
+  return {
+    data: newData,
+    facets: newFacets
+  };
+}
+```
+
+  
+To characterize the difficulty of queries, and hence of the workloads associated with each dataset,
+we consider the _relative contrast_, defined as
+\[
+RC_k = \frac{d_{avg}}{d_k}
+\]
+where $d_{avg}$ is the average distance of the query to the other points, and $d_k$ is the distance of the
+query from its $k$-th nearest neighbor.
+
+The plot below reports the distribution of relative contrasts for $k=100$ for the datasets^[Datasets with _inner product_ similarity are omitted from the plot, as the inner product is _not_ a metric, and the relative constrast is not well-defined for non-metric distances.]
+in the benchmark,
+with datasets arranged in increasing order of difficulty, top to bottom.
+
+![](distribution-rc100.png)
+
+
