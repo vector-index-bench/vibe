@@ -922,4 +922,4 @@ if __name__ == "__main__":
         pca_mahalanobis,
         recall=0.95
     )
-   rank_at_recall_plot(summary, 0.9)
+    rank_at_recall_plot(summary, 0.9)
