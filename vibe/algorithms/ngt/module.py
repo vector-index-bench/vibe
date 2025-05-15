@@ -110,11 +110,12 @@ class QG(BaseANN):
 
     def set_query_arguments(self, parameters):
         result_expansion, epsilon = parameters
-        self.name = "QG-NGT(%s, %s, %s, %s, %s, %1.3f)" % (
+        self.name = "QG-NGT(%d, %d, %d, %d, %1.3f, %1.3f, %1.3f)" % (
             self._edge_size,
             self._outdegree,
             self._indegree,
             self._max_edge_size,
+            self._epsilon,
             epsilon,
             result_expansion,
         )
@@ -216,10 +217,11 @@ class ONNG(BaseANN):
 
     def set_query_arguments(self, parameters):
         epsilon, edge_size = parameters
-        self.name = "ONNG-NGT(%s, %s, %s, %s, %1.3f)" % (
+        self.name = "ONNG-NGT(%d, %d, %d, %1.3f, %d, %1.3f)" % (
             self._edge_size,
             self._outdegree,
             self._indegree,
+            self._epsilon,
             edge_size,
             epsilon,
         )
