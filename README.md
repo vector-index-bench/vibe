@@ -15,8 +15,11 @@ Vector Index Benchmark for Embeddings (VIBE) is an extensible benchmark for appr
 
 ### Results
 
-The current VIBE results can be viewed at:
+The current VIBE results can be viewed on our website:
+
 https://vector-index-bench.github.io
+
+The website also features several other tools and visualizations to explore the results.
 
 ### Credits
 
