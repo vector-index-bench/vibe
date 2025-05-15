@@ -882,44 +882,44 @@ if __name__ == "__main__":
     query_stats = pl.read_parquet(data_dir / "stats.parquet").with_columns(normalize_names)
     pca_mahalanobis = pl.read_parquet(data_dir / "data-pca-mahalanobis.parquet").with_columns(normalize_names)
 
-    # plot_difficulty_ridgeline(query_stats)
-    # pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(2e2, 1.1e4))
-    # pareto_plot(summary, pca_mahalanobis=None, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(5e2, 1.1e4))
-    # pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yi-128-ip", "llama-128-ip"], algorithms=["roargraph", "mlann-rf", "lorann", "ivf(faiss)", "scann", "ivfpqfs(faiss)", "hnswlib", "glass", "ngt-onng"], xlim=(0, 1))
-    # pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yandex-200-cosine", "laion-clip-512-normalized"], algorithms=["roargraph", "lorann", "symphonyqg", "scann",  "ngt-qg", "hnswlib", "glass"], xlim=(0.5, 1))
-    # pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-hamming-binary", "agnews-mxbai-1024-euclidean"], algorithms=[["ngt-onng", "ivf(faiss)", "pynndescent", "hnsw(faiss)"], ["cuvs-cagra", "cuvs-ivfpq", "faiss-gpu-ivf", "cuvs-ivf", "ggnn"]], xlim=(0.7, 1), ylim=(3e2, 3e5))
-    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["agnews-mxbai-1024-euclidean", "landmark-nomic-768-normalized"])
-    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["arxiv-nomic-768-normalized", "landmark-nomic-768-normalized"])
-    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"])
-    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["gooaq-distilroberta-768-normalized", "landmark-nomic-768-normalized"])
-    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["yahoo-minilm-384-normalized", "landmark-nomic-768-normalized"])
+    plot_difficulty_ridgeline(query_stats)
+    pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(2e2, 1.1e4))
+    pareto_plot(summary, pca_mahalanobis=None, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(5e2, 1.1e4))
+    pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yi-128-ip", "llama-128-ip"], algorithms=["roargraph", "mlann-rf", "lorann", "ivf(faiss)", "scann", "ivfpqfs(faiss)", "hnswlib", "glass", "ngt-onng"], xlim=(0, 1))
+    pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yandex-200-cosine", "laion-clip-512-normalized"], algorithms=["roargraph", "lorann", "symphonyqg", "scann",  "ngt-qg", "hnswlib", "glass"], xlim=(0.5, 1))
+    pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-hamming-binary", "agnews-mxbai-1024-euclidean"], algorithms=[["ngt-onng", "ivf(faiss)", "pynndescent", "hnsw(faiss)"], ["cuvs-cagra", "cuvs-ivfpq", "faiss-gpu-ivf", "cuvs-ivf", "ggnn"]], xlim=(0.7, 1), ylim=(3e2, 3e5))
+    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["agnews-mxbai-1024-euclidean", "landmark-nomic-768-normalized"])
+    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["arxiv-nomic-768-normalized", "landmark-nomic-768-normalized"])
+    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"])
+    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["gooaq-distilroberta-768-normalized", "landmark-nomic-768-normalized"])
+    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["yahoo-minilm-384-normalized", "landmark-nomic-768-normalized"])
     radar_at_recall_plot(summary, query_stats, 0.95)
-    # performance_gap_plot(
-    #     "laion-clip-id-512-normalized",
-    #     "laion-clip-512-normalized",
-    #     summary,
-    #     pca_mahalanobis,
-    #     recall=0.95
-    # )
-    # performance_gap_plot(
-    #     "yandex-id-200-cosine",
-    #     "yandex-200-cosine",
-    #     summary,
-    #     pca_mahalanobis,
-    #     recall=0.95
-    # )
-    # performance_gap_plot(
-    #     "imagenet-align-id-640-normalized",
-    #     "imagenet-align-640-normalized",
-    #     summary,
-    #     pca_mahalanobis,
-    #     recall=0.95
-    # )
-    # performance_gap_plot(
-    #     "coco-nomic-id-768-normalized",
-    #     "coco-nomic-768-normalized",
-    #     summary,
-    #     pca_mahalanobis,
-    #     recall=0.95
-    # )
-    #rank_at_recall_plot(summary, 0.9)
+    performance_gap_plot(
+        "laion-clip-id-512-normalized",
+        "laion-clip-512-normalized",
+        summary,
+        pca_mahalanobis,
+        recall=0.95
+    )
+    performance_gap_plot(
+        "yandex-id-200-cosine",
+        "yandex-200-cosine",
+        summary,
+        pca_mahalanobis,
+        recall=0.95
+    )
+    performance_gap_plot(
+        "imagenet-align-id-640-normalized",
+        "imagenet-align-640-normalized",
+        summary,
+        pca_mahalanobis,
+        recall=0.95
+    )
+    performance_gap_plot(
+        "coco-nomic-id-768-normalized",
+        "coco-nomic-768-normalized",
+        summary,
+        pca_mahalanobis,
+        recall=0.95
+    )
+   rank_at_recall_plot(summary, 0.9)
