@@ -10,7 +10,7 @@ def export_results(path):
     with h5py.File(path) as hfp:
         for query_params in hfp.keys():
             k = hfp[query_params].attrs["count"]
-            dataset = path.parts[1]
+            dataset = hfp[query_params].attrs["dataset"]
             algo = hfp[query_params].attrs["algo"]
             params = hfp[query_params].attrs["name"] + "|" + query_params
             times = hfp[query_params]["times"][:]
@@ -36,26 +36,22 @@ def export_results(path):
                     recall=recalls,
                 )
             )
-            yield summary, detail
+            yield dataset, summary, detail
 
 
-def export_all_results(path, output_summary, output_detail):
+def export_all_results(path, output_summary, output_dir):
     summaries = []
-    details = []
 
     for path in pathlib.Path(path).glob("**/*.hdf5"):
         try:
-            for summary, detail in export_results(path):
+            for dataset, summary, detail in export_results(path):
                 summaries.append(summary)
-                details.append(detail)
+                detail.write_parquet(output_dir / f"{dataset}__detail.parquet")
         except:
             pass
 
     summary = pl.DataFrame(summaries)
     summary.write_parquet(output_summary)
-
-    detail = pl.concat(details)
-    detail.write_parquet(output_detail)
 
 
 def compute_lid(distances, k):
@@ -103,6 +99,9 @@ def export_data_info(data_dir, output_file):
 
 
 def mahalanobis_distance_batch(V, Q):
+    V = np.asarray(V, dtype=float)
+    Q = np.asarray(Q, dtype=float)
+
     if V.ndim != 2:
         raise ValueError("Input matrix 'V' must be 2-dimensional (each row is a vector).")
     if Q.ndim != 2:
@@ -162,14 +161,6 @@ def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
             train = hfp["train"][:]
             test = hfp["test"][:]
 
-            if "binary" in name:
-                train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
-                test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
-
-            if train.dtype != np.float32:
-                train = train.astype(np.float32)
-                test = test.astype(np.float32)
-
             mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
             train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
             train = train[train_sample_indices]
@@ -205,29 +196,21 @@ def main():
     aparser = argparse.ArgumentParser()
     aparser.add_argument("--results", help="the path to the directory containing results", default="results")
     aparser.add_argument("--data", help="the path to the directory containing datasets", default="data")
-    aparser.add_argument(
-        "--output-summary", help="the path to the parquet file storing the summaries", default="summary.parquet"
-    )
-    aparser.add_argument(
-        "--output-detail", help="the path to the file storing the detail of each query", default="detail.parquet"
-    )
-    aparser.add_argument(
-        "--output-stats", help="the path to the file storing the statistics of each query", default="stats.parquet"
-    )
-    aparser.add_argument(
-        "--output-info", help="the path to the file storing the statistics of each dataset", default="data-info.parquet"
-    )
-    aparser.add_argument(
-        "--output-pca-mahalanobis", help="the path to the file storing the statistics of each dataset", default="data-pca-mahalanobis.parquet"
-    )
+    aparser.add_argument("--output", help="the path to the output directory", default="results")
 
     args = aparser.parse_args()
-    export_all_results(args.results, args.output_summary, args.output_detail)
-    export_query_stats(args.data, args.output_stats)
-    export_data_info(args.data, args.output_info)
-    export_pca_and_mahalanobis(args.data, args.output_pca_mahalanobis)
+
+    output_dir = pathlib.Path(args.output)
+    output_summary = output_dir / "summary.parquet"
+    output_stats = output_dir / "stats.parquet"
+    output_info = output_dir / "data-info.parquet"
+    output_pca_mahalanobis = output_dir / "data-pca-mahalanobis.parquet"
+
+    export_all_results(args.results, output_summary, output_dir)
+    export_query_stats(args.data, output_stats)
+    export_data_info(args.data, output_info)
+    export_pca_and_mahalanobis(args.data, output_pca_mahalanobis)
 
 
 if __name__ == "__main__":
     main()
-

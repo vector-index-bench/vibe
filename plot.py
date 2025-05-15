@@ -23,7 +23,7 @@ from matplotlib import pyplot as plt
 import matplotlib
 
 SCRIPT_PATH = pathlib.Path(sys.argv[0])
-OUT_DIR = SCRIPT_PATH.parent
+OUT_DIR = SCRIPT_PATH.parent / "plots"
 # The list of in-distribution datasets
 ID_DATASETS = [
     "agnews-mxbai-1024-euclidean",
@@ -116,19 +116,18 @@ OTHER_ALGORITHMS = [
     "ngt-onng",
     "pynndescent",
 ]
+GPU_ALGORITHMS = [
+    "cuvs-cagra",
+    "cuvs-ivf",
+    "cuvs-ivfpq",
+    "faiss-gpu-ivf",
+    "ggnn",
+]
 ALGORITHM_COLORS = dict(zip(ALGORITHMS, matplotlib.color_sequences["tab20"]))
 ALGORITHM_DASHES = dict(zip(ALGORITHMS, sns._base.unique_dashes(len(ALGORITHMS))))
 OTHER_ALGORITHM_COLORS = dict(zip(OTHER_ALGORITHMS, matplotlib.color_sequences["tab20"]))
 OTHER_ALGORITHM_DASHES = dict(zip(OTHER_ALGORITHMS,
                                   sns._base.unique_dashes(len(OTHER_ALGORITHMS))))
-
-
-def export_palette():
-    from matplotlib.colors import to_hex
-
-    with open("plots/palette.tex", "w") as fp:
-        for algo, color in ALGORITHM_COLORS.items():
-            ic(algo, color, to_hex(color))
 
 
 def radar_chart(
@@ -244,7 +243,8 @@ def radar_at_recall_plot(
     supports_ip = data.filter(pl.col("dataset").str.contains("-ip"))["algorithm"].unique().to_list()
 
     plot_data = (
-        data.filter(pl.col("algorithm").is_in(algorithms))
+        data
+        .filter(~pl.col("algorithm").is_in(GPU_ALGORITHMS))
         .filter(pl.col("k") == k)
         .filter(pl.col("recall") >= recall)
         .with_columns(pl.col("qps").rank(descending=True).over("dataset", "algorithm").alias("qps_rank"))
@@ -266,6 +266,7 @@ def radar_at_recall_plot(
             .alias("dataset-type"),
         )
         .with_columns(pl.col("qps", "recall", "qps_frac").fill_null(0))
+        .filter(pl.col("algorithm").is_in(algorithms))
         .select("algorithm", "dataset", "qps_frac", "dataset-type")
     )
 
@@ -278,9 +279,8 @@ def radar_at_recall_plot(
         .with_columns(~pl.col("dataset").str.contains("-ip").alias("is-ip"))
         .sort("dataset-type", "is-ip", "rc100", "dataset")
     )["dataset"].to_list()
-    ic(dataset_order)
 
-    algorithm_order = (
+    algorithm_order = ic(
         plot_data.with_columns(pl.col("qps_frac").rank(descending=True).over("dataset").alias("rank"))
         .group_by("algorithm")
         .agg(pl.col("rank").mean())
@@ -875,50 +875,51 @@ if __name__ == "__main__":
     normalize_names = pl.col("dataset").str.replace("-[ae]2-", "-")
 
     summary = pl.read_parquet(data_dir / "summary.parquet").with_columns(normalize_names)
-    detail = pl.read_parquet(data_dir / "detail.parquet").with_columns(normalize_names)
+    detail = pl.concat([
+        pl.read_parquet(path)
+        for path in data_dir.glob("*__detail.parquet")
+    ]).with_columns(normalize_names)
     query_stats = pl.read_parquet(data_dir / "stats.parquet").with_columns(normalize_names)
     pca_mahalanobis = pl.read_parquet(data_dir / "data-pca-mahalanobis.parquet").with_columns(normalize_names)
 
-    export_palette()
-
-    plot_difficulty_ridgeline(query_stats)
-    pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(2e2, 1.1e4))
-    pareto_plot(summary, pca_mahalanobis=None, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(5e2, 1.1e4))
-    pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yi-128-ip", "llama-128-ip"], algorithms=["roargraph", "mlann-rf", "lorann", "ivf(faiss)", "scann", "ivfpqfs(faiss)", "hnswlib", "glass", "ngt-onng"], xlim=(0, 1))
-    pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yandex-200-cosine", "laion-clip-512-normalized"], algorithms=["roargraph", "lorann", "symphonyqg", "scann",  "ngt-qg", "hnswlib", "glass"], xlim=(0.5, 1))
-    pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-hamming-binary", "agnews-mxbai-1024-euclidean"], algorithms=[["ngt-onng", "ivf(faiss)", "pynndescent", "hnsw(faiss)"], ["cuvs-cagra", "cuvs-ivfpq", "faiss-gpu-ivf", "cuvs-ivf", "ggnn"]], xlim=(0.7, 1), ylim=(3e2, 3e5))
-    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["agnews-mxbai-1024-euclidean", "landmark-nomic-768-normalized"])
-    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["arxiv-nomic-768-normalized", "landmark-nomic-768-normalized"])
-    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"])
-    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["gooaq-distilroberta-768-normalized", "landmark-nomic-768-normalized"])
-    split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["yahoo-minilm-384-normalized", "landmark-nomic-768-normalized"])
+    # plot_difficulty_ridgeline(query_stats)
+    # pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(2e2, 1.1e4))
+    # pareto_plot(summary, pca_mahalanobis=None, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"], xlim=(0.7, 1.0), ylim=(5e2, 1.1e4))
+    # pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yi-128-ip", "llama-128-ip"], algorithms=["roargraph", "mlann-rf", "lorann", "ivf(faiss)", "scann", "ivfpqfs(faiss)", "hnswlib", "glass", "ngt-onng"], xlim=(0, 1))
+    # pareto_plot(summary, pca_mahalanobis=pca_mahalanobis, datasets=["yandex-200-cosine", "laion-clip-512-normalized"], algorithms=["roargraph", "lorann", "symphonyqg", "scann",  "ngt-qg", "hnswlib", "glass"], xlim=(0.5, 1))
+    # pareto_plot(summary, pca_mahalanobis=None, datasets=["agnews-mxbai-1024-hamming-binary", "agnews-mxbai-1024-euclidean"], algorithms=[["ngt-onng", "ivf(faiss)", "pynndescent", "hnsw(faiss)"], ["cuvs-cagra", "cuvs-ivfpq", "faiss-gpu-ivf", "cuvs-ivf", "ggnn"]], xlim=(0.7, 1), ylim=(3e2, 3e5))
+    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["agnews-mxbai-1024-euclidean", "landmark-nomic-768-normalized"])
+    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["arxiv-nomic-768-normalized", "landmark-nomic-768-normalized"])
+    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"])
+    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["gooaq-distilroberta-768-normalized", "landmark-nomic-768-normalized"])
+    # split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["yahoo-minilm-384-normalized", "landmark-nomic-768-normalized"])
     radar_at_recall_plot(summary, query_stats, 0.95)
-    performance_gap_plot(
-        "laion-clip-id-512-normalized",
-        "laion-clip-512-normalized",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
-    performance_gap_plot(
-        "yandex-id-200-cosine",
-        "yandex-200-cosine",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
-    performance_gap_plot(
-        "imagenet-align-id-640-normalized",
-        "imagenet-align-640-normalized",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
-    performance_gap_plot(
-        "coco-nomic-id-768-normalized",
-        "coco-nomic-768-normalized",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
+    # performance_gap_plot(
+    #     "laion-clip-id-512-normalized",
+    #     "laion-clip-512-normalized",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
+    # performance_gap_plot(
+    #     "yandex-id-200-cosine",
+    #     "yandex-200-cosine",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
+    # performance_gap_plot(
+    #     "imagenet-align-id-640-normalized",
+    #     "imagenet-align-640-normalized",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
+    # performance_gap_plot(
+    #     "coco-nomic-id-768-normalized",
+    #     "coco-nomic-768-normalized",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
     #rank_at_recall_plot(summary, 0.9)
