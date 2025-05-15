@@ -1,6 +1,6 @@
 <h1 align="center">VIBE</h1>
 <div align="center">
-Vector Index Benchmark for Embeddings (VIBE)
+Vector Index Benchmark for Embeddings (VIBE) is an extensible benchmark for approximate nearest neighbor search methods, or vector indexes, using modern embedding datasets.
 </div>
 <br/>
 
@@ -18,7 +18,11 @@ Vector Index Benchmark for Embeddings (VIBE)
 The current VIBE results can be viewed at:
 https://vector-index-bench.github.io
 
-### datasets
+### Credits
+
+The evaluation code in VIBE is based on the [ann-benchmarks](https://github.com/erikbern/ann-benchmarks/) project.
+
+### Datasets
 
 | Name | Data Source | Model | Type | n | d | Distance |
 |---|---|---|---|---|---|---|
