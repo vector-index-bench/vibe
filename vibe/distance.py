@@ -53,6 +53,8 @@ def normalized_cosine(a, b):
 popcnt = np.array([bin(i).count("1") for i in range(256)], dtype=np.float32)
 
 
+# bit_hamming function from
+# https://github.com/lmcinnes/pynndescent/blob/master/pynndescent/distances.py
 @numba.njit(
     [
         "f4(u1[::1],u1[::1])",
