@@ -421,7 +421,7 @@ def run_singularity(
     with subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, bufsize=1
     ) as process:
-        logger = logging.getLogger(f"annb.{process.pid}")
+        logger = logging.getLogger(f"vibe.{process.pid}")
         logger.info(f"Started process with PID: {process.pid}")
 
         for line in process.stdout:

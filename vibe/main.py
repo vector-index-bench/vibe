@@ -16,7 +16,7 @@ from .util import download, replace
 
 
 logging.config.fileConfig("logging.conf")
-logger = logging.getLogger("annb")
+logger = logging.getLogger("vibe")
 
 
 def positive_int(input_str: str) -> int:
