@@ -23,7 +23,7 @@ The website also features several other tools and visualizations to explore the 
 
 ### Credits
 
-The evaluation code in VIBE is based on the [ann-benchmarks](https://github.com/erikbern/ann-benchmarks/) project.
+The evaluation code and some algorithm implementations in VIBE are based on the [ann-benchmarks](https://github.com/erikbern/ann-benchmarks/) project.
 
 ### Datasets
 
