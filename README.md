@@ -4,6 +4,8 @@ Vector Index Benchmark for Embeddings (VIBE) is an extensible benchmark for appr
 </div>
 <br/>
 
+![Radar chart](images/radar-0.95.png)
+
 ---
 
 - Modern vector index benchmark with embedding datasets
