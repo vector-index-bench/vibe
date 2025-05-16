@@ -11,7 +11,7 @@ Vector Index Benchmark for Embeddings (VIBE) is an extensible benchmark for appr
 - Includes the most comprehensive collection of state-of-the-art vector search algorithms
 - Support for quantized datasets in both 8-bit integer and binary precision
 - Support for GPU algorithms
-- Support for HPC environments with SLURM
+- Support for HPC environments with Slurm
 
 ### Results
 
@@ -97,6 +97,9 @@ The script can be used to either build images for all available libraries (`./in
 > [!TIP]
 > `install.sh` takes an argument `--build-dir` that specifies the temporary build directory. For example, to speed up the build in a cluster environment, you can set the build directory to a location on an SSD while the project files are on a slower storage medium.
 
+> [!TIP]
+> See an [example Slurm job](slurm/install.sh) for building the libraries using Slurm.
+
 ### Running benchmarks
 
 The benchmarks for a single dataset can be run using `run.py`. For example:
@@ -107,8 +110,14 @@ python3 run.py --dataset agnews-mxbai-1024-euclidean
 
 Common options for run.py:
 - `--parallelism n`: Use `n` processes for benchmarking.
+- `--algorithm algo`: Run the benchmark for only `algo`.
 - `--count k`: Run the benchmarks using `k` nearest neighbors (default 100).
 - `--gpu`: Run the benchmark in GPU mode.
+
+The benchmark should take less than 24 hours to run for a given dataset using parallelism > 8.
+
+> [!TIP]
+> See an [example Slurm job](slurm/run.sh) for running the benchmark using Slurm.
 
 ### Creating datasets from scratch
 
@@ -124,6 +133,9 @@ The `VIBE_CACHE` environment variable should be set to a cache directory with at
 export VIBE_CACHE=$LOCAL_SCRATCH
 ./create_dataset "--bind $LOCAL_SCRATCH:$LOCAL_SCRATCH --nv" --dataset agnews-mxbai-1024-euclidean
 ```
+
+> [!TIP]
+> See an [example Slurm job](slurm/dataset.sh) for creating datasets using Slurm.
 
 ## License
 
