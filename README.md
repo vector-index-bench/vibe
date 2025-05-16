@@ -119,6 +119,18 @@ The benchmark should take less than 24 hours to run for a given dataset using pa
 > [!TIP]
 > See an [example Slurm job](slurm/run.sh) for running the benchmark using Slurm.
 
+### Plotting results
+
+To plot the results, you must first build the `plot.sif` image:
+```sh
+singularity build plot.sif plot.def
+```
+
+The results can then plotted with:
+```sh
+./plot.sh
+```
+
 ### Creating datasets from scratch
 
 The benchmark code downloads precomputed embedding datasets. However, the datasets can also be recreated from scratch, and it is also possible to create new datasets by modifying the [datasets.py](vibe/datasets.py) file.
