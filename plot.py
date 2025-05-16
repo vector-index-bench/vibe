@@ -894,32 +894,32 @@ if __name__ == "__main__":
     split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["gooaq-distilroberta-768-normalized", "landmark-nomic-768-normalized"])
     split_difficulties_plot(summary, detail, query_stats, 0.90, datasets=["yahoo-minilm-384-normalized", "landmark-nomic-768-normalized"])
     radar_at_recall_plot(summary, query_stats, 0.95)
-    performance_gap_plot(
-        "laion-clip-id-512-normalized",
-        "laion-clip-512-normalized",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
-    performance_gap_plot(
-        "yandex-id-200-cosine",
-        "yandex-200-cosine",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
-    performance_gap_plot(
-        "imagenet-align-id-640-normalized",
-        "imagenet-align-640-normalized",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
-    performance_gap_plot(
-        "coco-nomic-id-768-normalized",
-        "coco-nomic-768-normalized",
-        summary,
-        pca_mahalanobis,
-        recall=0.95
-    )
-    rank_at_recall_plot(summary, 0.9)
+
+    # performance_gap_plot(
+    #     "laion-clip-id-512-normalized",
+    #     "laion-clip-512-normalized",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
+    # performance_gap_plot(
+    #     "yandex-id-200-cosine",
+    #     "yandex-200-cosine",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
+    # performance_gap_plot(
+    #     "imagenet-align-id-640-normalized",
+    #     "imagenet-align-640-normalized",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
+    # performance_gap_plot(
+    #     "coco-nomic-id-768-normalized",
+    #     "coco-nomic-768-normalized",
+    #     summary,
+    #     pca_mahalanobis,
+    #     recall=0.95
+    # )
