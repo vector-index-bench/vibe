@@ -75,12 +75,14 @@ The evaluation code in VIBE is based on the [ann-benchmarks](https://github.com/
 - [Apptainer](https://apptainer.org/) (or [Singularity](https://sylabs.io/singularity/))
 - Python 3.6+
 
+Some algorithms may require that the CPU supports AVX-512 instructions. Most GPU algorithms assume that an NVIDIA GPU is available.
+
 ### Building library images
 
 Building images can be done using `install.sh`. It can be used to either build images for all available libraries (`./install.sh`) or an image for a single library (e.g. `./install.sh --algorithm faiss`).
 
 > [!TIP]
-> `install.sh` takes an argument `--build-dir` that specifies the temporary build directory (e.g. to speed up the build in a cluster environment, you can set the build directory to a location on an SSD while the project files are on slower storage medium).
+> `install.sh` takes an argument `--build-dir` that specifies the temporary build directory. For example, to speed up the build in a cluster environment, you can set the build directory to a location on an SSD while the project files are on a slower storage medium.
 
 ### Running benchmarks
 
@@ -97,7 +99,7 @@ Common options for run.py:
 
 ### Creating datasets from scratch
 
-The benchmark code downloads precomputed embeddings datasets. However, the datasets can also be recreated from scratch, and it is also possible to create new datasets by modifying the [datasets.py](vibe/datasets.py) file.
+The benchmark code downloads precomputed embedding datasets. However, the datasets can also be recreated from scratch, and it is also possible to create new datasets by modifying the [datasets.py](vibe/datasets.py) file.
 
 Creating the datasets can be done using `create_dataset.sh`. It first requires that `dataset.sif` is built:
 ```sh
