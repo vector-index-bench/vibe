@@ -125,9 +125,12 @@ GPU_ALGORITHMS = [
 ]
 ALGORITHM_COLORS = dict(zip(ALGORITHMS, matplotlib.color_sequences["tab20"]))
 ALGORITHM_DASHES = dict(zip(ALGORITHMS, sns._base.unique_dashes(len(ALGORITHMS))))
+ALGORITHM_MARKERS = dict(zip(ALGORITHMS, sns._base.unique_markers(len(ALGORITHMS))))
 OTHER_ALGORITHM_COLORS = dict(zip(OTHER_ALGORITHMS, matplotlib.color_sequences["tab20"]))
 OTHER_ALGORITHM_DASHES = dict(zip(OTHER_ALGORITHMS,
                                   sns._base.unique_dashes(len(OTHER_ALGORITHMS))))
+OTHER_ALGORITHM_MARKERS = dict(zip(OTHER_ALGORITHMS,
+                                  sns._base.unique_markers(len(OTHER_ALGORITHMS))))
 
 
 def radar_chart(
@@ -463,7 +466,8 @@ def pareto_plot(
             kwargs["palette"] = ALGORITHM_COLORS if joint_legend else OTHER_ALGORITHM_COLORS
 
         dashes = ALGORITHM_DASHES if joint_legend else OTHER_ALGORITHM_DASHES
-        sns.lineplot(units="algorithm", lw=1.5, estimator=None, markers=True, legend=True, dashes=dashes, ax=ax, **kwargs)
+        markers = ALGORITHM_MARKERS if joint_legend else OTHER_ALGORITHM_MARKERS
+        sns.lineplot(units="algorithm", lw=1.5, estimator=None, markers=markers, legend=True, dashes=dashes, ax=ax, **kwargs)
         ax.grid(which="major", linewidth=0.5, color="lightgray", alpha=0.5)
         ax.grid(which="minor", axis="y", linewidth=0.5, color="lightgray", alpha=0.5)
 
