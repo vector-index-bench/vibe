@@ -87,7 +87,12 @@ Some algorithms may require that the CPU supports AVX-512 instructions. Most GPU
 
 ### Building library images
 
-Building images can be done using `install.sh`. It can be used to either build images for all available libraries (`./install.sh`) or an image for a single library (e.g. `./install.sh --algorithm faiss`).
+Building all library images can be done using
+```sh
+./install.sh
+```
+
+The script can be used to either build images for all available libraries (`./install.sh`) or an image for a single library (e.g. `./install.sh --algorithm faiss`).
 
 > [!TIP]
 > `install.sh` takes an argument `--build-dir` that specifies the temporary build directory. For example, to speed up the build in a cluster environment, you can set the build directory to a location on an SSD while the project files are on a slower storage medium.
@@ -114,7 +119,7 @@ Creating the datasets can be done using `create_dataset.sh`. It first requires t
 singularity build dataset.sif dataset.def
 ```
 
-The VIBE_CACHE environment variable should be set to a cache directory with at least 200 GB of free space when creating image embeddings using the Landmark or ImageNet datasets. datasets can then be created using the `--dataset argument` (the `--nv` argument specifies that an available GPU can be used):
+The `VIBE_CACHE` environment variable should be set to a cache directory with at least 200 GB of free space when creating image embeddings using the Landmark or ImageNet datasets. Datasets can then be created using the `--dataset argument` (the `--nv` argument specifies that an available GPU can be used):
 ```sh
 export VIBE_CACHE=$LOCAL_SCRATCH
 ./create_dataset "--bind $LOCAL_SCRATCH:$LOCAL_SCRATCH --nv" --dataset agnews-mxbai-1024-euclidean
