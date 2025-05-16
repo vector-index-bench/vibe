@@ -1,0 +1,6 @@
+Bootstrap: localimage
+From: images/base.sif
+
+%post
+  micromamba install -y -q seaborn=0.13.2 pyarrow=20.0.0 scipy=1.15.2 polars=1.29.0 icecream=2.1.4
+  micromamba clean --all --yes
