@@ -357,7 +357,7 @@ def parse_dataset_string(s):
             break
 
     if dimension is None:
-        raise ValueError(f"No dimension found in: {s}")
+        raise ValueError(f"No dimension found in dataset name: {s}")
 
     # Get distance type, otherwise default to "normalized"
     if dimension_index + 1 < len(parts):
@@ -392,7 +392,10 @@ def main():
         hdf5_filename = os.path.join("data", f"{args.dataset}.hdf5")
         download(dataset_url, hdf5_filename)
     except:
-        raise Exception(f"Cannot download {args.dataset}. Try creating the dataset manually using create_dataset.py")
+        raise Exception(
+            f"""Cannot download {args.dataset}. Make sure you have entered a valid dataset name.
+           You can also try creating the dataset manually using create_dataset.sh"""
+        )
 
     definitions: List[Definition] = get_definitions(
         dimension=dimension,
