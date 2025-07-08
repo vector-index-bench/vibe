@@ -1,5 +1,6 @@
 import numpy as np
-import functools
+import torch
+from lorann_gpu import LorannIndex
 
 from ..base.module import BaseANN
 
@@ -7,36 +8,47 @@ from ..base.module import BaseANN
 class LorannGPU(BaseANN):
 
     def __init__(self, metric, global_dim, rank, train_size, n_clusters, precision):
-        import lorann_gpu.jax
-        import jax.numpy as jnp
-
-        dtype = jnp.float16 if precision == 16 else jnp.float32
-
         self.metric = metric
         self.global_dim = global_dim
         self.rank = rank
         self.train_size = train_size
         self.n_clusters = n_clusters
-        self.index_type = functools.partial(lorann_gpu.jax.Lorann.build, data_dtype=jnp.float16, dtype=dtype)
+        self.dtype = torch.float16 if precision == 16 else torch.float32
 
     def fit(self, X):
         if X.dtype != np.float32:
             X = X.astype(np.float32)
 
         if self.metric == "cosine":
-            X[np.linalg.norm(X, axis=1) == 0] = 1.0 / np.sqrt(X.shape[1])
             X /= np.linalg.norm(X, axis=1)[:, np.newaxis]
 
-        self.index = self.index_type(
-            X, self.n_clusters, self.global_dim, self.rank, self.train_size, self.metric == "euclidean"
+        self.index = LorannIndex(
+            data=X,
+            n_clusters=self.n_clusters,
+            global_dim=self.global_dim,
+            euclidean=self.metric == "euclidean",
+            dtype=self.dtype
         )
+        self.index.build()
 
-    def set_query_arguments(self, clusters_to_search, points_to_rerank):
-        import jax
+    def fit_ood(self, X_train, X_learn, X_learn_neighbors):
+        if X_train.dtype != np.float32:
+            X_train = X_train.astype(np.float32)
 
-        jax.clear_caches()
+        if self.metric == "cosine":
+            X_train /= np.linalg.norm(X_train, axis=1)[:, np.newaxis]
 
-        self.clusters_to_search, self.points_to_rerank = clusters_to_search, points_to_rerank
+        self.index = LorannIndex(
+            data=X_train,
+            n_clusters=self.n_clusters,
+            global_dim=self.global_dim,
+            euclidean=self.metric == "euclidean",
+            dtype=self.dtype
+        )
+        self.index.build(training_queries=X_learn)
+
+    def set_query_arguments(self, query_args):
+        self.clusters_to_search, self.points_to_rerank = query_args
 
     def batch_query(self, X, n):
         if X.dtype != np.float32:
@@ -45,7 +57,7 @@ class LorannGPU(BaseANN):
         self.res = self.index.search(X, n, self.clusters_to_search, self.points_to_rerank)
 
     def get_batch_results(self):
-        return [list(x[x != -1]) for x in self.res]
+        return [list(x[x != -1]) for x in self.res.detach().cpu().numpy()]
 
     def __str__(self):
         str_template = "LorannGPU(gd=%d, r=%d, nc=%d, cs=%d, pr=%d)"

@@ -57,7 +57,7 @@ The evaluation code and some algorithm implementations in VIBE are based on the 
 | [ANNOY](https://github.com/spotify/annoy) | 1.17.3 |
 | [FALCONN++](https://github.com/NinhPham/FalconnPP) | git+5fd3f17 |
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
-| [CAGRA](https://github.com/rapidsai/cuvs) | 25.4.0 |
+| [CAGRA](https://github.com/rapidsai/cuvs) | 25.6.01 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
 | [GLASS](https://github.com/zilliztech/pyglass) | 1.0.5 |
 | [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |

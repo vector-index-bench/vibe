@@ -40,6 +40,7 @@ class cuVSIVF(BaseANN):
         self.n_list = n_list
 
     def fit(self, X):
+        self.num_points = len(X)
         index_params = ivf_flat.IndexParams(n_lists=self.n_list, metric=self.metric)
         self.index = ivf_flat.build(index_params, cp.array(X))
 
@@ -53,7 +54,7 @@ class cuVSIVF(BaseANN):
 
     def get_batch_results(self):
         D, L = self.res
-        return [list(x[(x >= 0) & (x <= 2147483647)]) for x in L]
+        return [list(x[(x >= 0) & (x < self.num_points)]) for x in L]
 
     def __str__(self):
         return "cuVSIVF(n_list={}, n_probes={})".format(self.n_list, self.n_probe)
@@ -72,14 +73,18 @@ class cuVSIVFPQ(BaseANN):
         self.pq_bits = pq_bits
 
     def fit(self, X):
+        self.num_points = len(X)
+
         if self.metric == "cosine":
             X /= np.linalg.norm(X, axis=1)[:, np.newaxis]
-            metric = "inner_product"
+            metric = "sqeuclidean"
         else:
             metric = self.metric
 
         n, d = X.shape
-        index_params = ivf_pq.IndexParams(n_lists=self.n_list, metric=metric, pq_dim=self.pq_dim, pq_bits=self.pq_bits)
+        index_params = ivf_pq.IndexParams(
+            n_lists=self.n_list, metric=metric, pq_dim=self.pq_dim, pq_bits=self.pq_bits
+        )
         self.dataset = cp.array(X)
         self.index = ivf_pq.build(index_params, self.dataset)
 
@@ -106,7 +111,7 @@ class cuVSIVFPQ(BaseANN):
 
     def get_batch_results(self):
         D, L = self.res
-        return [list(x[(x >= 0) & (x <= 2147483647)]) for x in L]
+        return [list(x[(x >= 0) & (x < self.num_points)]) for x in L]
 
     def __str__(self):
         return "cuVSIVFPQ(n_list={}, pq_dim={}, pq_bits={}, n_probes={}, ldtype={}, ratio={})".format(
@@ -129,6 +134,8 @@ class cuVSCAGRA(BaseANN):
             raise Exception()
 
     def fit(self, X):
+        self.num_points = len(X)
+
         if self.metric == "cosine":
             X /= np.linalg.norm(X, axis=1)[:, np.newaxis]
             metric = "inner_product"
@@ -163,7 +170,7 @@ class cuVSCAGRA(BaseANN):
 
     def get_batch_results(self):
         D, L = self.res
-        return [list(x[(x >= 0) & (x <= 2147483647)]) for x in L]
+        return [list(x[(x >= 0) & (x < self.num_points)]) for x in L]
 
     def __str__(self):
         return "cuVSCAGRA(graph_deg={}, i_graph_deg={}, itopk={}, search_w={})".format(

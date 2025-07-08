@@ -54,7 +54,8 @@ def run_worker(cpu: int, args: argparse.Namespace, queue: multiprocessing.Queue)
     Returns:
         None
     """
-    os.sched_setaffinity(0, {cpu})
+    if args.parallelism > 1:
+        os.sched_setaffinity(0, {cpu})
 
     while True:
         try:
@@ -119,7 +120,7 @@ def parse_arguments() -> argparse.Namespace:
         help="If set, then will run everything locally (inside the same " "process) rather than using Singularity",
     )
     parser.add_argument("--batch", action="store_true", help="If set, algorithms get all queries at once")
-    parser.add_argument("--gpu", action="store_true", help="If set, run the GPU algorithms")
+    parser.add_argument("--gpu", action="store_true", help="If set, run the benchmark in GPU mode")
     parser.add_argument(
         "--max-n-algorithms", type=int, help="Max number of algorithms to run (just used for testing)", default=-1
     )
@@ -143,7 +144,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def filter_already_run_definitions(
-    definitions: List[Definition], dataset: str, count: int, batch: bool, force: bool
+    definitions: List[Definition], dataset: str, count: int, batch: bool, gpu: bool, force: bool
 ) -> List[Definition]:
     """Filters out the algorithm definitions based on whether they have already been run or not.
 
@@ -155,10 +156,10 @@ def filter_already_run_definitions(
     Args:
         definitions (List[Definition]): A list of algorithm definitions to be filtered.
         dataset (str): The name of the dataset to load training points from.
-        force (bool): If set, re-run algorithms even if their results already exist.
-
         count (int): The number of near neighbours to search for (only used in file naming convention).
         batch (bool): If set, algorithms get all queries at once (only used in file naming convention).
+        gpu (bool): If set, run the benchmark in GPU mode (only used in file naming convention).
+        force (bool): If set, re-run algorithms even if their results already exist.
 
     Returns:
         List[Definition]: A list of algorithm definitions that either have not been run or are
@@ -170,7 +171,7 @@ def filter_already_run_definitions(
         not_yet_run = [
             query_args
             for query_args in (definition.query_argument_groups or [[]])
-            if force or not is_run(dataset, count, definition, query_args, batch)
+            if force or not is_run(dataset, count, definition, query_args, batch, gpu)
         ]
 
         if not_yet_run:
@@ -249,7 +250,9 @@ def create_workers_and_execute(definitions: List[Definition], args: argparse.Nam
 
     core = cpu_affinity[0]
     remaining_cores = cpu_affinity[1:]
-    os.sched_setaffinity(0, {core})
+
+    if args.parallelism > 1:
+        os.sched_setaffinity(0, {core})
 
     workers = []
     num_workers = min([args.parallelism, len(remaining_cores), len(definitions)])
@@ -280,10 +283,6 @@ def filter_disabled_algorithms(definitions: List[Definition]) -> List[Definition
     Returns:
         List[Definition]: A list of algorithm definitions excluding any that are disabled.
     """
-    disabled_algorithms = [d for d in definitions if d.disabled]
-    if disabled_algorithms:
-        logger.info(f"Not running disabled algorithms {disabled_algorithms}")
-
     return [d for d in definitions if not d.disabled]
 
 
@@ -411,6 +410,7 @@ def main():
         dataset=args.dataset,
         count=args.count,
         batch=args.batch,
+        gpu=args.gpu,
         force=args.force,
     )
 
