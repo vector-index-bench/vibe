@@ -82,10 +82,10 @@ The evaluation code and some algorithm implementations in VIBE are based on the 
 
 ### Requirements
 
-- [Apptainer](https://apptainer.org/) (or [Singularity](https://sylabs.io/singularity/))
+- [Apptainer](https://apptainer.org/docs/admin/main/installation.html#install-from-pre-built-packages) (or [Singularity](https://docs.sylabs.io/guides/4.3/user-guide/quick_start.html))
 - Python 3.6+
 
-Some algorithms may require that the CPU supports AVX-512 instructions. Most GPU algorithms assume that an NVIDIA GPU is available.
+Some algorithms may require that the CPU supports AVX-512 instructions. The GPU algorithms assume that an NVIDIA GPU is available.
 
 ### Building library images
 
@@ -110,6 +110,8 @@ The benchmarks for a single dataset can be run using `run.py`. For example:
 python3 run.py --dataset agnews-mxbai-1024-euclidean
 ```
 
+The run.py script does not depend on any external libraries and can therefore be used without a container or a virtual environment.
+
 Common options for run.py:
 - `--parallelism n`: Use `n` processes for benchmarking.
 - `--algorithm algo`: Run the benchmark for only `algo`.
@@ -123,15 +125,32 @@ The benchmark should take less than 24 hours to run for a given dataset using pa
 
 ### Plotting results
 
-To plot the results, you must first build the `plot.sif` image:
+You should first build the `plot.sif` image:
 ```sh
 singularity build plot.sif plot.def
 ```
 
-The results can then plotted with:
+Before plotting, the current results must first be exported:
 ```sh
-./plot.sh
+./export_results.sh
 ```
+
+The results for a dataset can then plotted with e.g.:
+```sh
+./plot.sh --dataset agnews-mxbai-1024-euclidean
+```
+
+To plot the radar chart above, use:
+```sh
+./plot.sh --plot-type radar
+```
+
+For all available options, see:
+```
+./plot.sh --help
+```
+
+You can also use [uv](https://docs.astral.sh/uv/) to directly run `export_results.py` and `plot.py` without building the container image if preferable. The arguments for these scripts are the same as above.
 
 ### Creating datasets from scratch
 
@@ -145,7 +164,7 @@ singularity build dataset.sif dataset.def
 The `VIBE_CACHE` environment variable should be set to a cache directory with at least 200 GB of free space when creating image embeddings using the Landmark or ImageNet datasets. Datasets can then be created using the `--dataset argument` (the `--nv` argument specifies that an available GPU can be used):
 ```sh
 export VIBE_CACHE=$LOCAL_SCRATCH
-./create_dataset "--bind $LOCAL_SCRATCH:$LOCAL_SCRATCH --nv" --dataset agnews-mxbai-1024-euclidean
+./create_dataset.sh --singularity-args "--bind $LOCAL_SCRATCH:$LOCAL_SCRATCH --nv" --dataset agnews-mxbai-1024-euclidean
 ```
 
 > [!TIP]
