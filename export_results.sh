@@ -13,7 +13,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ $local_mode = "false" ]; then
-    singularity exec "plot.sif" python3 plot.py $args
+    singularity exec "plot.sif" python3 export_results.py $args
 else
-    python3 plot.py $args
+    python3 export_results.py $args
 fi

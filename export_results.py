@@ -1,13 +1,47 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "polars",
+#     "h5py",
+#     "scikit-learn",
+# ]
+# ///
+
 import numpy as np
 import pathlib
 import argparse
 import h5py
 import polars as pl
-from icecream import ic
+import concurrent.futures
+from collections import defaultdict
 
 
-def export_results(path):
-    with h5py.File(path) as hfp:
+def get_recall_values(dataset_distances, run_distances, count, epsilon=1e-3):
+    recalls = np.zeros(len(run_distances))
+    for i in range(len(run_distances)):
+        t = dataset_distances[i][count - 1] + epsilon
+        recalls[i] = (run_distances[i][:count] <= t).sum()
+    return recalls
+
+
+def compute_metrics(path, data_dir):
+    true_distances = {}
+    for data_path in pathlib.Path(data_dir).glob("**/*.hdf5"):
+        name = data_path.name.replace(".hdf5", "")
+        with h5py.File(data_path) as hfp:
+            true_distances[name] = hfp["distances"][:]
+
+    with h5py.File(path, "r+") as hfp:
+        for query_params in hfp.keys():
+            dataset = hfp[query_params].attrs["dataset"]
+            if "recalls" not in hfp[query_params]:
+                hfp[query_params]["recalls"] = get_recall_values(
+                    true_distances[dataset], hfp[query_params]["distances"], hfp[query_params].attrs["count"]
+                )
+
+
+def export_results(path, data_dir):
+    with h5py.File(path, "r") as hfp:
         for query_params in hfp.keys():
             k = hfp[query_params].attrs["count"]
             dataset = hfp[query_params].attrs["dataset"]
@@ -15,14 +49,14 @@ def export_results(path):
             params = hfp[query_params].attrs["name"] + "|" + query_params
             times = hfp[query_params]["times"][:]
             n_queries = len(times)
-            recalls = hfp[query_params]["metrics"]["knn"]["recalls"][:] / k
+            recalls = hfp[query_params]["recalls"][:] / k
+            qps = 1 / hfp[query_params].attrs["best_search_time"]
             summary = dict(
                 k=k,
                 dataset=dataset,
                 algorithm=algo,
                 params=params,
-                avg_time=times.mean(),
-                qps=n_queries / times.sum(),
+                qps=qps,
                 recall=recalls.mean(),
             )
             detail = pl.DataFrame(
@@ -39,19 +73,50 @@ def export_results(path):
             yield dataset, summary, detail
 
 
-def export_all_results(path, output_summary, output_dir):
+def _process_file(file_path, data_dir):
+    compute_metrics(file_path, data_dir)
+
     summaries = []
+    details = defaultdict(list)
 
-    for path in pathlib.Path(path).glob("**/*.hdf5"):
-        try:
-            for dataset, summary, detail in export_results(path):
-                summaries.append(summary)
-                detail.write_parquet(output_dir / f"{dataset}__detail.parquet")
-        except:
-            pass
+    for dataset, summary, detail in export_results(file_path, data_dir):
+        summaries.append(summary)
+        details[dataset].append(detail)
 
-    summary = pl.DataFrame(summaries)
-    summary.write_parquet(output_summary)
+    return summaries, details
+
+
+def export_all_results(path, data_dir, output_summary, output_dir):
+    root_path = pathlib.Path(path)
+    data_dir = pathlib.Path(data_dir)
+    output_summary = pathlib.Path(output_summary)
+    output_dir = pathlib.Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    hdf5_files = list(root_path.glob("**/*.hdf5"))
+    if not hdf5_files:
+        print("No .hdf5 files found — nothing to do.")
+        return
+
+    summaries = []
+    dataset_details = defaultdict(list)
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=None) as pool:
+        futures = [pool.submit(_process_file, file_path, data_dir) for file_path in hdf5_files]
+
+        for future in concurrent.futures.as_completed(futures):
+            file_summaries, details_map = future.result()
+            summaries.extend(file_summaries)
+            for dataset, detail_list in details_map.items():
+                dataset_details[dataset].extend(detail_list)
+
+    for dataset, detail_frames in dataset_details.items():
+        if detail_frames:
+            detail_df = pl.concat(detail_frames)
+            detail_df.write_parquet(output_dir / f"{dataset}__detail.parquet")
+
+    if summaries:
+        pl.DataFrame(summaries).write_parquet(output_summary)
 
 
 def compute_lid(distances, k):
@@ -99,25 +164,19 @@ def export_data_info(data_dir, output_file):
 
 
 def mahalanobis_distance_batch(V, Q):
-    V = np.asarray(V, dtype=float)
-    Q = np.asarray(Q, dtype=float)
-
     if V.ndim != 2:
         raise ValueError("Input matrix 'V' must be 2-dimensional (each row is a vector).")
     if Q.ndim != 2:
         raise ValueError("Input matrix 'Q' must be 2-dimensional.")
     if V.shape[1] != Q.shape[1]:
-        raise ValueError(
-                f"Dimension mismatch: V columns ({V.shape[1]}) must equal "
-                f"Q columns ({Q.shape[1]})."
-        )
+        raise ValueError(f"Dimension mismatch: V columns ({V.shape[1]}) must equal " f"Q columns ({Q.shape[1]}).")
     if Q.shape[0] < 2:
         raise ValueError("Input matrix 'Q' must have at least 2 samples (rows).")
 
     mu = np.mean(Q, axis=0)
     cov_matrix = np.cov(Q, rowvar=False, ddof=1)
 
-    diff = V - mu 
+    diff = V - mu
 
     if cov_matrix.ndim == 0:
         variance = cov_matrix.item()
@@ -132,9 +191,7 @@ def mahalanobis_distance_batch(V, Q):
         try:
             inv_cov_matrix = np.linalg.pinv(cov_matrix)
         except np.linalg.LinAlgError:
-            raise ValueError(
-                    "Covariance matrix is singular and pseudo-inverse could not be computed."
-            )
+            raise ValueError("Covariance matrix is singular and pseudo-inverse could not be computed.")
 
         temp = diff @ inv_cov_matrix
         distances_sq = np.sum(temp * diff, axis=1)
@@ -143,7 +200,7 @@ def mahalanobis_distance_batch(V, Q):
     distances_sq[negative_close_to_zero] = 0.0
 
     if np.any(distances_sq < 0):
-            raise ValueError("Squared Mahalanobis distance is negative for some inputs")
+        raise ValueError("Squared Mahalanobis distance is negative for some inputs")
 
     return np.sqrt(distances_sq)
 
@@ -157,9 +214,16 @@ def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
         gen = np.random.default_rng(1234)
         with h5py.File(path) as hfp:
             name = path.name.replace(".hdf5", "")
-            ic(name)
             train = hfp["train"][:]
             test = hfp["test"][:]
+
+            if name.endswith("-binary"):
+                train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
+                test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
+
+            if train.dtype != np.float32:
+                train = train.astype(np.float32)
+                test = test.astype(np.float32)
 
             mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
             train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
@@ -174,19 +238,18 @@ def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
             scaler = StandardScaler()
 
             combined = np.vstack([train, test])
-            ic(combined.shape)
             combined_scaled = scaler.fit_transform(combined)
             combined_pca = pca.fit_transform(combined_scaled)
-            ic(combined_pca.shape)
-            df = pl.DataFrame(dict(
-                dataset=name,
-                part=np.concatenate((np.repeat("train", train.shape[0]), np.repeat("test", test.shape[0]))),
-                x=combined_pca[:, 0],
-                y=combined_pca[:, 1],
-                mahalanobis_distance_to_data=mahalanobis_combined
-            ))
+            df = pl.DataFrame(
+                dict(
+                    dataset=name,
+                    part=np.concatenate((np.repeat("train", train.shape[0]), np.repeat("test", test.shape[0]))),
+                    x=combined_pca[:, 0],
+                    y=combined_pca[:, 1],
+                    mahalanobis_distance_to_data=mahalanobis_combined,
+                )
+            )
             pcas.append(df)
-            
 
     pcas = pl.concat(pcas)
     pcas.write_parquet(output_file)
@@ -206,7 +269,7 @@ def main():
     output_info = output_dir / "data-info.parquet"
     output_pca_mahalanobis = output_dir / "data-pca-mahalanobis.parquet"
 
-    export_all_results(args.results, output_summary, output_dir)
+    export_all_results(args.results, args.data, output_summary, output_dir)
     export_query_stats(args.data, output_stats)
     export_data_info(args.data, output_info)
     export_pca_and_mahalanobis(args.data, output_pca_mahalanobis)
