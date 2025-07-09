@@ -3,8 +3,11 @@
 *.o
 
 data/*
+images/*
+plots/*
 
 *.log
+*.sif
 
 results/*
 !results/*.png
