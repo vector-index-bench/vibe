@@ -6,6 +6,7 @@
 #     "scipy",
 #     "seaborn",
 #     "scikit-learn",
+#     "networkx"
 # ]
 # ///
 
@@ -13,7 +14,8 @@ import pathlib
 import os
 import math
 import argparse
-
+import itertools
+from scipy.stats import wilcoxon
 import polars as pl
 import seaborn as sns
 import numpy as np
@@ -884,13 +886,154 @@ def paper(out_dir, summary, detail, query_stats, pca_mahalanobis):
     )
 
 
+def latency_difference_table(
+    data,
+    detail,
+    recall,
+    dataset,
+    algorithms=[
+        "lorann",
+        "symphonyqg",
+        "glass",
+        "ngt-qg",
+        "ngt-onng",
+        "scann",
+        "hnswlib",
+        "ivfpqfs(faiss)",
+        "vamana-lvq(svs)",
+    ],
+    k=100,
+):
+    """\
+    Checks whether the differences in latencies are statistically significant or not,
+    by performing the Wilcoxon paired test.
+    """
+    data = data.filter(pl.col("dataset") == dataset).filter(pl.col("algorithm").is_in(algorithms))
+
+    configs = (
+        fastest_at(data, recall, k).select("dataset", "algorithm", "params").sort("dataset", "algorithm", "params")
+    )
+
+    stats = detail.filter(pl.col("k") == k, pl.col("dataset") == dataset).join(
+        configs, on=["dataset", "algorithm", "params"]
+    )
+
+    def get_times(stats, algorithm):
+        times = (
+            stats.filter(pl.col("algorithm") == algorithm)
+            .group_by("query_index")
+            .agg(pl.col("time").mean())
+            .sort("query_index")
+        )["time"]
+        return times.to_numpy()
+
+    p_values = []
+    for a, b in itertools.combinations(algorithms, 2):
+        atimes = get_times(stats, a)
+        btimes = get_times(stats, b)
+        if len(atimes) == 0 or len(btimes) == 0:
+            continue
+        # Do the pairwise test
+        test = wilcoxon(atimes - btimes)
+        p_values.append(
+            dict(algorithm_a=a, algorithm_b=b, latency_a=atimes.mean(), latency_b=btimes.mean(), p_value=test.pvalue)
+        )
+    if len(p_values) == 0:
+        return pl.DataFrame(schema=["algorithm_a", "algorithm_b", "latency_a", "latency_b", "p_value", "dataset"])
+    return pl.DataFrame(p_values).sort("p_value").with_columns(pl.lit(dataset).alias("dataset"))
+
+
+def holm_bonferroni(table, p_value_col):
+    """Correct the p-values of the given table, where each row is a statistical test."""
+    table = table.sort(p_value_col)
+    sorted_p_values = table[p_value_col].to_numpy()
+    corrected_p_values = np.maximum.accumulate(sorted_p_values * np.arange(len(sorted_p_values), 0, -1))
+    corrected_p_values = np.minimum(corrected_p_values, 1)
+    table = table.with_columns(pl.Series(name=p_value_col, values=corrected_p_values))
+    return table
+
+
+def latency_difference_plot(summary, detail, recall, datasets, algorithms, output, k=100, significance_level=0.05):
+    try:
+        import networkx
+        from icecream import ic
+    except ImportError:
+        raise ImportError("latency_difference_plot requires networkx")
+    tests = []
+    for dataset in datasets:
+        df = latency_difference_table(summary, detail, recall, dataset, algorithms=algorithms, k=k)
+        tests.append(df)
+    tests = holm_bonferroni(pl.concat(tests), "p_value")
+
+    graphs = dict()
+    for dataset in datasets:
+        G = networkx.Graph()
+        for algo in algorithms:
+            G.add_node(algo)
+        graphs[dataset] = G
+    for test in tests.rows(named=True):
+        if test["p_value"] >= significance_level:
+            graphs[test["dataset"]].add_edge(test["algorithm_a"], test["algorithm_b"])
+
+    for dataset in datasets:
+        G = graphs[dataset]
+        groups = [c for c in networkx.find_cliques(G) if len(c) > 1]
+        ic(groups)
+        plt.figure(figsize=(8, 2))
+        pdata = tests.filter(pl.col("dataset") == dataset)
+        pdata = pl.concat(
+            [
+                pdata.select(algorithm="algorithm_a", latency="latency_a"),
+                pdata.select(algorithm="algorithm_b", latency="latency_b"),
+            ]
+        ).unique().sort("latency")
+
+        algos = pdata["algorithm"].to_numpy()
+        times = pdata["latency"].to_numpy()
+        minx, maxx = times[0], times[-1]
+        span = maxx - minx
+        for x in [minx, maxx]:
+            label = f"{x*1000:.3} ms"
+            plt.annotate(label, xy=(x, 0), xytext=(x, 0.15), ha="center")
+            plt.plot((x, x), (0, 0.05), c="black", lw=0.5)
+        plt.plot((minx, maxx), (0, 0), c="black")
+        minx = minx - 0.1*span
+        maxx = maxx + 0.1*span
+
+        offset = 0.2
+        baseline = -0.3
+        for i, a in enumerate(algos):
+            if i < len(algos) // 2:
+                y = baseline - i*offset
+                plt.annotate(a, xy=(minx-0.02*span, y), ha="right")
+                plt.plot((minx, times[i], times[i]), (y, y, 0), lw=0.5, c="black")
+            else:
+                y = baseline - (len(algos) - i - 1) * offset
+                plt.annotate(a, xy=(maxx+0.02*span, y), ha="left")
+                plt.plot((maxx, times[i], times[i]), (y, y, 0), lw=0.5, c="black")
+
+        offset = 0.1
+        baseline = -0.1
+        for i, group in enumerate(groups):
+            gstart = pdata.filter(pl.col("algorithm").is_in(group))["latency"].min()
+            gend = pdata.filter(pl.col("algorithm").is_in(group))["latency"].max()
+            ic(gstart, gend, i, group)
+            y = baseline - i*offset
+            plt.plot((gstart-0.005*span, gend+0.005*span), (y, y), lw=3, c="black")
+
+        plt.title(dataset)
+        plt.gca().set_axis_off()
+        plt.tight_layout()
+        plt.savefig(pathlib.Path(output) / f"latency-critdiff-{dataset}-{recall}.png")
+
+
 if __name__ == "__main__":
     aparser = argparse.ArgumentParser()
     aparser.add_argument("--results", help="the path to the directory containing results", default="results")
     aparser.add_argument("--output", help="the path to the output directory", default="plots")
     aparser.add_argument(
         "--plot-type",
-        help="type of plot (pareto, radar, difficulty, performance-gap, split-difficulties)",
+        help="type of plot (pareto, radar, difficulty, performance-gap, split-difficulties, critdiff)",
         default="pareto",
     )
     aparser.add_argument("--dataset", help="dataset", default="agnews-mxbai-1024-euclidean")
@@ -1006,6 +1149,10 @@ if __name__ == "__main__":
             recall,
             datasets=datasets,
             k=count,
+        )
+    elif args.plot_type == "critdiff":
+        latency_difference_plot(
+            summary, detail, args.recall, datasets, output=args.output, algorithms=algorithms, k=count
         )
     elif args.plot_type == "paper":
         paper(out_dir, summary, detail, query_stats, pca_mahalanobis)
