@@ -15,18 +15,30 @@ class Lorann(BaseANN):
         self.train_size = train_size
 
     def fit(self, X):
-        if X.dtype != np.float32:
-            X = X.astype(np.float32)
+        n_samples, dim = X.shape
+
+        if self.metric == "hamming":
+            index_type = lorannlib.BinaryLorannIndex
+            dim *= 8
+        elif X.dtype == np.uint8:
+            index_type = lorannlib.U8LorannIndex
+        else:
+            index_type = lorannlib.FP32LorannIndex
 
         if self.metric == "cosine":
             X /= np.linalg.norm(X, axis=1)[:, np.newaxis]
-
-        n_samples, dim = X.shape
+            distance = lorannlib.IP
+        elif self.metric == "euclidean":
+            distance = lorannlib.L2
+        elif self.metric == "hamming":
+            distance = lorannlib.HAMMING
+        else:
+            distance = lorannlib.IP
 
         if self.global_dim > dim:
             raise ValueError(f"LoRANN: global_dim ({self.global_dim}) larger than data dim ({dim})")
 
-        self.index = lorannlib.LorannIndex(
+        self.index = index_type(
             X,
             n_samples,
             dim,
@@ -35,20 +47,37 @@ class Lorann(BaseANN):
             self.global_dim,
             self.rank,
             self.train_size,
-            self.metric == "euclidean",
+            distance,
+            False,
             False,
         )
-        self.index.build(True, 1)
+        self.index.build(True, False, 1)
 
     def fit_ood(self, X_train, X_learn, X_learn_neighbors):
-        if X_train.dtype != np.float32:
-            X_train = X_train.astype(np.float32)
+        n_samples, dim = X_train.shape
+
+        if self.metric == "hamming":
+            index_type = lorannlib.BinaryLorannIndex
+            dim *= 8
+        elif X_train.dtype == np.uint8:
+            index_type = lorannlib.U8LorannIndex
+        else:
+            index_type = lorannlib.FP32LorannIndex
 
         if self.metric == "cosine":
             X_train /= np.linalg.norm(X_train, axis=1)[:, np.newaxis]
+            distance = lorannlib.IP
+        elif self.metric == "euclidean":
+            distance = lorannlib.L2
+        elif self.metric == "hamming":
+            distance = lorannlib.HAMMING
+        else:
+            distance = lorannlib.IP
 
-        n_samples, dim = X_train.shape
-        self.index = lorannlib.LorannIndex(
+        if self.global_dim > dim:
+            raise ValueError(f"LoRANN: global_dim ({self.global_dim}) larger than data dim ({dim})")
+
+        self.index = index_type(
             X_train,
             n_samples,
             dim,
@@ -57,10 +86,11 @@ class Lorann(BaseANN):
             self.global_dim,
             self.rank,
             self.train_size,
-            self.metric == "euclidean",
+            distance,
+            False,
             False,
         )
-        self.index.build(True, 1, X_learn)
+        self.index.build(True, False, 1, X_learn)
 
     def set_query_arguments(self, query_args):
         self.clusters_to_search, self.points_to_rerank = query_args

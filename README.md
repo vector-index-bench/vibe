@@ -65,7 +65,7 @@ The evaluation code and some algorithm implementations in VIBE are based on the 
 | [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.11.0 |
 | [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.7 |
 | [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.7 |
-| [LoRANN](https://github.com/ejaasaari/lorann) | 0.2 |
+| [LoRANN](https://github.com/ejaasaari/lorann) | 0.4 |
 | [MLANN](https://github.com/ejaasaari/mlann) | git+40848e7 |
 | [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.1 |
 | [NGT-ONNG](https://github.com/yahoojapan/NGT/) | git+83d5896 |

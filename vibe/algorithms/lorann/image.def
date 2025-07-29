@@ -2,4 +2,4 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  pip install --no-cache-dir lorann==0.2
+  pip install --no-cache-dir lorann==0.4
