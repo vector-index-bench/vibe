@@ -66,10 +66,10 @@ The evaluation code and some algorithm implementations in VIBE are based on the 
 | [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.7 |
 | [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.7 |
 | [LoRANN](https://github.com/ejaasaari/lorann) | 0.4 |
-| [MLANN](https://github.com/ejaasaari/mlann) | git+40848e7 |
-| [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.1 |
-| [NGT-ONNG](https://github.com/yahoojapan/NGT/) | git+83d5896 |
-| [NGT-QG](https://github.com/yahoojapan/NGT/) | git+83d5896 |
+| [MLANN](https://github.com/ejaasaari/mlann) | git+f5d966b |
+| [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.2 |
+| [NGT-ONNG](https://github.com/yahoojapan/NGT/) | git+c245442 |
+| [NGT-QG](https://github.com/yahoojapan/NGT/) | git+c245442 |
 | [NSG](https://github.com/facebookresearch/faiss) | 1.11.0 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.5.13 |

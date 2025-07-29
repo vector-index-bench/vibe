@@ -9,7 +9,7 @@ From: base.sif
   cd ngt
 
   git config --global --add safe.directory /ngt
-  git reset --hard 83d5896237aad143b3a90b427f2898372531a50e
+  git reset --hard c24544202d0ada932d027401555e91e37ca304fc
 
   mkdir build
   cd build

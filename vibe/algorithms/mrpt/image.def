@@ -2,4 +2,4 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  pip install --no-cache-dir mrpt==2.0.1
+  pip install --no-cache-dir mrpt==2.0.2
