@@ -14,7 +14,7 @@ From: base.sif
   mkdir build
   cd build
   cmake -DNGTQG_NO_ROTATION=ON -DNGTQG_ZERO_GLOBAL=ON ..
-  make && make install
+  make -j && make install
   cd ..
 
   ldconfig
