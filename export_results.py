@@ -4,6 +4,7 @@
 #     "polars",
 #     "h5py",
 #     "scikit-learn",
+#     "tqdm",
 # ]
 # ///
 
@@ -13,6 +14,7 @@ import argparse
 import h5py
 import polars as pl
 import concurrent.futures
+from tqdm import tqdm
 from collections import defaultdict
 
 
@@ -104,11 +106,14 @@ def export_all_results(path, data_dir, output_summary, output_dir):
     with concurrent.futures.ProcessPoolExecutor(max_workers=None) as pool:
         futures = [pool.submit(_process_file, file_path, data_dir) for file_path in hdf5_files]
 
-        for future in concurrent.futures.as_completed(futures):
-            file_summaries, details_map = future.result()
-            summaries.extend(file_summaries)
-            for dataset, detail_list in details_map.items():
-                dataset_details[dataset].extend(detail_list)
+        with tqdm(total=len(futures), desc="Exporting results") as pbar:
+            for future in concurrent.futures.as_completed(futures):
+                file_summaries, details_map = future.result()
+                summaries.extend(file_summaries)
+                for dataset, detail_list in details_map.items():
+                    dataset_details[dataset].extend(detail_list)
+
+                pbar.update(1)
 
     for dataset, detail_frames in dataset_details.items():
         if detail_frames:
@@ -136,29 +141,39 @@ def compute_lid(distances, k):
 
 
 def export_query_stats(data_dir, output_file):
+    hdf5_files = list(pathlib.Path(data_dir).glob("**/*.hdf5"))
+
     stats = []
-    for path in pathlib.Path(data_dir).glob("**/*.hdf5"):
-        with h5py.File(path) as hfp:
-            name = path.name.replace(".hdf5", "")
-            distances = hfp["distances"][:]
-            avg_distances = hfp["avg_distances"][:]
-            metrics = dict(dataset=name, query_index=np.arange(distances.shape[0]))
-            for k in [1, 10, 100]:
-                if k > 1:
-                    metrics[f"lid{k}"] = np.array([compute_lid(ds, k) for ds in distances])
-                metrics[f"rc{k}"] = avg_distances / distances[:, k - 1]
-            stats.append(pl.DataFrame(metrics))
+    with tqdm(total=len(hdf5_files), desc="Exporting query stats") as pbar:
+        for path in hdf5_files:
+            with h5py.File(path) as hfp:
+                name = path.name.replace(".hdf5", "")
+                distances = hfp["distances"][:]
+                avg_distances = hfp["avg_distances"][:]
+                metrics = dict(dataset=name, query_index=np.arange(distances.shape[0]))
+                for k in [1, 10, 100]:
+                    if k > 1:
+                        metrics[f"lid{k}"] = np.array([compute_lid(ds, k) for ds in distances])
+                    metrics[f"rc{k}"] = avg_distances / distances[:, k - 1]
+                stats.append(pl.DataFrame(metrics))
+            pbar.update(1)
+
     stats = pl.concat(stats)
     stats.write_parquet(output_file)
 
 
 def export_data_info(data_dir, output_file):
+    hdf5_files = list(pathlib.Path(data_dir).glob("**/*.hdf5"))
+
     stats = []
-    for path in pathlib.Path(data_dir).glob("**/*.hdf5"):
-        with h5py.File(path) as hfp:
-            name = path.name.replace(".hdf5", "")
-            n, d = hfp["train"][:].shape
-            stats.append(dict(dataset=name, n=n, dimensions=d))
+    with tqdm(total=len(hdf5_files), desc="Exporting dataset info") as pbar:
+        for path in hdf5_files:
+            with h5py.File(path) as hfp:
+                name = path.name.replace(".hdf5", "")
+                n, d = hfp["train"][:].shape
+                stats.append(dict(dataset=name, n=n, dimensions=d))
+            pbar.update(1)
+
     stats = pl.DataFrame(stats)
     stats.write_parquet(output_file)
 
@@ -209,47 +224,52 @@ def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
 
+    hdf5_files = list(pathlib.Path(data_dir).glob("**/*.hdf5"))
+
     pcas = []
-    for path in pathlib.Path(data_dir).glob("**/*.hdf5"):
-        gen = np.random.default_rng(1234)
-        with h5py.File(path) as hfp:
-            name = path.name.replace(".hdf5", "")
-            train = hfp["train"][:]
-            test = hfp["test"][:]
+    with tqdm(total=len(hdf5_files), desc="Exporting PCA and Mahalanobis data") as pbar:
+        for path in hdf5_files:
+            gen = np.random.default_rng(1234)
+            with h5py.File(path) as hfp:
+                name = path.name.replace(".hdf5", "")
+                train = hfp["train"][:]
+                test = hfp["test"][:]
 
-            if name.endswith("-binary"):
-                train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
-                test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
+                if name.endswith("-binary"):
+                    train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
+                    test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
 
-            if train.dtype != np.float32:
-                train = train.astype(np.float32)
-                test = test.astype(np.float32)
+                if train.dtype != np.float32:
+                    train = train.astype(np.float32)
+                    test = test.astype(np.float32)
 
-            mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
-            train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
-            train = train[train_sample_indices]
+                mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
+                train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
+                train = train[train_sample_indices]
 
-            data_to_data = mahalanobis_distance_batch(train, mahalanobis_sample_train)
-            query_to_data = mahalanobis_distance_batch(test, mahalanobis_sample_train)
+                data_to_data = mahalanobis_distance_batch(train, mahalanobis_sample_train)
+                query_to_data = mahalanobis_distance_batch(test, mahalanobis_sample_train)
 
-            mahalanobis_combined = np.concatenate((data_to_data, query_to_data))
+                mahalanobis_combined = np.concatenate((data_to_data, query_to_data))
 
-            pca = PCA(n_components=2, random_state=1)
-            scaler = StandardScaler()
+                pca = PCA(n_components=2, random_state=1)
+                scaler = StandardScaler()
 
-            combined = np.vstack([train, test])
-            combined_scaled = scaler.fit_transform(combined)
-            combined_pca = pca.fit_transform(combined_scaled)
-            df = pl.DataFrame(
-                dict(
-                    dataset=name,
-                    part=np.concatenate((np.repeat("train", train.shape[0]), np.repeat("test", test.shape[0]))),
-                    x=combined_pca[:, 0],
-                    y=combined_pca[:, 1],
-                    mahalanobis_distance_to_data=mahalanobis_combined,
+                combined = np.vstack([train, test])
+                combined_scaled = scaler.fit_transform(combined)
+                combined_pca = pca.fit_transform(combined_scaled)
+                df = pl.DataFrame(
+                    dict(
+                        dataset=name,
+                        part=np.concatenate((np.repeat("train", train.shape[0]), np.repeat("test", test.shape[0]))),
+                        x=combined_pca[:, 0],
+                        y=combined_pca[:, 1],
+                        mahalanobis_distance_to_data=mahalanobis_combined,
+                    )
                 )
-            )
-            pcas.append(df)
+                pcas.append(df)
+
+            pbar.update(1)
 
     pcas = pl.concat(pcas)
     pcas.write_parquet(output_file)

@@ -946,7 +946,6 @@ def holm_bonferroni(table, p_value_col):
 def latency_difference_plot(summary, detail, recall, datasets, algorithms, output, k=100, significance_level=0.05):
     try:
         import networkx
-        from icecream import ic
     except ImportError:
         raise ImportError("latency_difference_plot requires networkx")
     tests = []

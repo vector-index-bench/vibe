@@ -2,5 +2,5 @@ Bootstrap: localimage
 From: images/base.sif
 
 %post
-  micromamba install -y -q seaborn=0.13.2 pyarrow=20.0.0 scipy=1.16.0 polars=1.31.0 scikit-learn=1.7.0 h5py=3.14.0
+  micromamba install -y -q seaborn=0.13.2 pyarrow=21.0.0 scipy=1.16.0 polars=1.31.0 scikit-learn=1.7.1 h5py=3.14.0 tqdm=4.67.1 networkx=3.5
   micromamba clean --all --yes
