@@ -1102,6 +1102,11 @@ if __name__ == "__main__":
         else:
             ylim = (2e2, 1.1e4)
 
+        if "llama-128-ip" in datasets or "yi-128-ip" in datasets:
+            xlim = (0, 1)
+        else:
+            xlim = (0.7, 1.0)
+
         pareto_plot(
             out_dir,
             summary,
@@ -1109,7 +1114,7 @@ if __name__ == "__main__":
             datasets=datasets,
             algorithms=algorithms,
             k=count,
-            xlim=(0.7, 1.0),
+            xlim=xlim,
             ylim=ylim,
             separate_legend=False,
         )
