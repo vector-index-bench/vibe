@@ -52,14 +52,14 @@ def run_individual_query(
             """
             if prepared_queries:
                 algo.prepare_query(v, count)
-                start = time.time()
+                start = time.perf_counter()
                 algo.run_prepared_query()
-                total = time.time() - start
+                total = time.perf_counter() - start
                 candidates = algo.get_prepared_query_results()
             else:
-                start = time.time()
+                start = time.perf_counter()
                 candidates = algo.query(v, count)
-                total = time.time() - start
+                total = time.perf_counter() - start
 
             # make sure all returned indices are unique
             # assert len(candidates) == len(set(candidates)), "Implementation returned duplicated candidates"
@@ -88,13 +88,13 @@ def run_individual_query(
             """
             if prepared_queries:
                 algo.prepare_batch_query(X, count)
-                start = time.time()
+                start = time.perf_counter()
                 algo.run_batch_query()
-                total = time.time() - start
+                total = time.perf_counter() - start
             else:
-                start = time.time()
+                start = time.perf_counter()
                 algo.batch_query(X, count)
-                total = time.time() - start
+                total = time.perf_counter() - start
             results = algo.get_batch_results()
             if hasattr(algo, "get_batch_latencies"):
                 batch_latencies = algo.get_batch_latencies()
