@@ -14,6 +14,13 @@ from .runner import run, run_singularity
 from .results import is_run
 from .util import download, replace
 
+try:
+    from . import numa
+
+    HAS_NUMA = numa.available()
+except:
+    HAS_NUMA = False
+
 
 logging.config.fileConfig("logging.conf")
 logger = logging.getLogger("vibe")
@@ -42,6 +49,45 @@ def positive_int(input_str: str) -> int:
     return i
 
 
+def get_numa_node_for_cpu(cpu: int) -> int:
+    """
+    Find which NUMA node a CPU belongs to.
+
+    Args:
+        cpu (int): CPU core number
+
+    Returns:
+        int: NUMA node number
+    """
+    if not numa.available():
+        return 0
+
+    max_node = numa.get_max_node()
+    for node in range(max_node + 1):
+        cpus_on_node = numa.node_to_cpus(node)
+        if cpu in cpus_on_node:
+            return node
+
+    return 0
+
+
+def bind_process(cpu: int) -> None:
+    """
+    Binds the process to the specified CPU and its local NUMA node memory.
+
+    Args:
+        cpu (int): CPU core number to bind to
+    """
+    os.sched_setaffinity(0, {cpu})
+
+    if HAS_NUMA:
+        node = get_numa_node_for_cpu(cpu)
+
+        logger.info(f"Worker on CPU {cpu}: binding memory and execution to NUMA node {node}")
+        numa.set_membind({node})
+        numa.set_run_on_node_mask({node})
+
+
 def run_worker(cpu: int, args: argparse.Namespace, queue: multiprocessing.Queue) -> None:
     """
     Executes the algorithm based on the provided parameters.
@@ -55,7 +101,7 @@ def run_worker(cpu: int, args: argparse.Namespace, queue: multiprocessing.Queue)
         None
     """
     if args.parallelism > 1:
-        os.sched_setaffinity(0, {cpu})
+        bind_process(cpu)
 
     while True:
         try:
@@ -246,13 +292,13 @@ def create_workers_and_execute(definitions: List[Definition], args: argparse.Nam
         task_queue.put(definition)
 
     pid = os.getpid()
-    cpu_affinity = list(os.sched_getaffinity(pid))
+    cpu_affinity = sorted(list(os.sched_getaffinity(pid)))
 
     core = cpu_affinity[0]
     remaining_cores = cpu_affinity[1:]
 
     if args.parallelism > 1:
-        os.sched_setaffinity(0, {core})
+        bind_process(core)
 
     workers = []
     num_workers = min([args.parallelism, len(remaining_cores), len(definitions)])
