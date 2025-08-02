@@ -43,36 +43,39 @@ def compute_metrics(path, data_dir):
 
 
 def export_results(path, data_dir):
-    with h5py.File(path, "r") as hfp:
-        for query_params in hfp.keys():
-            k = hfp[query_params].attrs["count"]
-            dataset = hfp[query_params].attrs["dataset"]
-            algo = hfp[query_params].attrs["algo"]
-            params = hfp[query_params].attrs["name"] + "|" + query_params
-            times = hfp[query_params]["times"][:]
-            n_queries = len(times)
-            recalls = hfp[query_params]["recalls"][:] / k
-            qps = 1 / hfp[query_params].attrs["best_search_time"]
-            summary = dict(
-                k=k,
-                dataset=dataset,
-                algorithm=algo,
-                params=params,
-                qps=qps,
-                recall=recalls.mean(),
-            )
-            detail = pl.DataFrame(
-                dict(
-                    dataset=dataset,
-                    query_index=np.arange(n_queries),
+    try:
+        with h5py.File(path, "r") as hfp:
+            for query_params in hfp.keys():
+                k = hfp[query_params].attrs["count"]
+                dataset = hfp[query_params].attrs["dataset"]
+                algo = hfp[query_params].attrs["algo"]
+                params = hfp[query_params].attrs["name"] + "|" + query_params
+                times = hfp[query_params]["times"][:]
+                n_queries = len(times)
+                recalls = hfp[query_params]["recalls"][:] / k
+                qps = 1 / hfp[query_params].attrs["best_search_time"]
+                summary = dict(
                     k=k,
+                    dataset=dataset,
                     algorithm=algo,
                     params=params,
-                    time=times,
-                    recall=recalls,
+                    qps=qps,
+                    recall=recalls.mean(),
                 )
-            )
-            yield dataset, summary, detail
+                detail = pl.DataFrame(
+                    dict(
+                        dataset=dataset,
+                        query_index=np.arange(n_queries),
+                        k=k,
+                        algorithm=algo,
+                        params=params,
+                        time=times,
+                        recall=recalls,
+                    )
+                )
+                yield dataset, summary, detail
+    except BlockingIOError:
+        print(f"Unable to open {path} -- skipping")
 
 
 def _process_file(file_path, data_dir):
@@ -88,7 +91,7 @@ def _process_file(file_path, data_dir):
     return summaries, details
 
 
-def export_all_results(path, data_dir, output_summary, output_dir):
+def export_all_results(path, data_dir, parallelism, output_summary, output_dir):
     root_path = pathlib.Path(path)
     data_dir = pathlib.Path(data_dir)
     output_summary = pathlib.Path(output_summary)
@@ -103,7 +106,7 @@ def export_all_results(path, data_dir, output_summary, output_dir):
     summaries = []
     dataset_details = defaultdict(list)
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=None) as pool:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=parallelism) as pool:
         futures = [pool.submit(_process_file, file_path, data_dir) for file_path in hdf5_files]
 
         with tqdm(total=len(futures), desc="Exporting results") as pbar:
@@ -163,6 +166,10 @@ def export_query_stats(data_dir, output_file):
 
 
 def export_data_info(data_dir, output_file):
+    if output_file.exists():
+        print(f"Output file {output_file} already exists -- skipping")
+        return
+
     hdf5_files = list(pathlib.Path(data_dir).glob("**/*.hdf5"))
 
     stats = []
@@ -221,6 +228,10 @@ def mahalanobis_distance_batch(V, Q):
 
 
 def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
+    if output_file.exists():
+        print(f"Output file {output_file} already exists -- skipping")
+        return
+
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
 
@@ -280,6 +291,7 @@ def main():
     aparser.add_argument("--results", help="the path to the directory containing results", default="results")
     aparser.add_argument("--data", help="the path to the directory containing datasets", default="data")
     aparser.add_argument("--output", help="the path to the output directory", default="results")
+    aparser.add_argument("--parallelism", type=int, help="number of parallel processes to use", default=1)
 
     args = aparser.parse_args()
 
@@ -289,7 +301,7 @@ def main():
     output_info = output_dir / "data-info.parquet"
     output_pca_mahalanobis = output_dir / "data-pca-mahalanobis.parquet"
 
-    export_all_results(args.results, args.data, output_summary, output_dir)
+    export_all_results(args.results, args.data, args.parallelism, output_summary, output_dir)
     export_query_stats(args.data, output_stats)
     export_data_info(args.data, output_info)
     export_pca_and_mahalanobis(args.data, output_pca_mahalanobis)
