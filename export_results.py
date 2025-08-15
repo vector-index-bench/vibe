@@ -79,7 +79,11 @@ def export_results(path, data_dir):
 
 
 def _process_file(file_path, data_dir):
-    compute_metrics(file_path, data_dir)
+    try:
+        compute_metrics(file_path, data_dir)
+    except:
+        print(f"Invalid results file {file_path} -- skipping")
+        return None, None
 
     summaries = []
     details = defaultdict(list)
@@ -112,9 +116,10 @@ def export_all_results(path, data_dir, parallelism, output_summary, output_dir):
         with tqdm(total=len(futures), desc="Exporting results") as pbar:
             for future in concurrent.futures.as_completed(futures):
                 file_summaries, details_map = future.result()
-                summaries.extend(file_summaries)
-                for dataset, detail_list in details_map.items():
-                    dataset_details[dataset].extend(detail_list)
+                if file_summaries is not None and details_map is not None:
+                    summaries.extend(file_summaries)
+                    for dataset, detail_list in details_map.items():
+                        dataset_details[dataset].extend(detail_list)
 
                 pbar.update(1)
 
@@ -191,7 +196,7 @@ def mahalanobis_distance_batch(V, Q):
     if Q.ndim != 2:
         raise ValueError("Input matrix 'Q' must be 2-dimensional.")
     if V.shape[1] != Q.shape[1]:
-        raise ValueError(f"Dimension mismatch: V columns ({V.shape[1]}) must equal " f"Q columns ({Q.shape[1]}).")
+        raise ValueError(f"Dimension mismatch: V columns ({V.shape[1]}) must equal Q columns ({Q.shape[1]}).")
     if Q.shape[0] < 2:
         raise ValueError("Input matrix 'Q' must have at least 2 samples (rows).")
 
