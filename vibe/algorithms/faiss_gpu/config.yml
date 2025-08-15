@@ -8,9 +8,21 @@ float:
     module: vibe.algorithms.faiss_gpu
     name: faiss-gpu-ivf
     run_groups:
-      base:
-        args: [[512, 1024, 2048, 4096, 8192], [0, 1]]
-        query_args: [[4, 8, 16, 32, 64, 96, 128, 256]]
+      base-512:
+        args: [[512], [0, 1]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64]]
+      base-1024:
+        args: [[1024], [0, 1]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128]]
+      base-2048:
+        args: [[2048], [0, 1]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256]]
+      base-4096:
+        args: [[4096], [0, 1]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]]
+      base-8192:
+        args: [[8192], [0, 1]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]]
   - base_args: ['@metric']
     constructor: FaissGPUIVFPQ
     disabled: true
@@ -19,6 +31,15 @@ float:
     module: vibe.algorithms.faiss_gpu
     name: faiss-gpu-ivfpq
     run_groups:
-      base:
-        args: [[512, 1024, 2048, 4096], [20, 56, 64, 96]]
-        query_args: [[4, 8, 16, 32, 64, 96, 128, 256]]
+      base-512:
+        args: [[512], [20, 56, 64, 96]]
+        query_args: [[4, 8, 16, 32, 64]]
+      base-1024:
+        args: [[1024], [20, 56, 64, 96]]
+        query_args: [[4, 8, 16, 32, 64, 128]]
+      base-2048:
+        args: [[2048], [20, 56, 64, 96]]
+        query_args: [[4, 8, 16, 32, 64, 128, 256]]
+      base-4096:
+        args: [[4096], [20, 56, 64, 96]]
+        query_args: [[4, 8, 16, 32, 64, 128, 256, 512]]

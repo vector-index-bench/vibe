@@ -6,7 +6,6 @@ from ..base.module import BaseANN
 
 
 class GGNN(BaseANN):
-
     def __init__(self, metric, k_build, tau_build):
         if metric == "cosine":
             self.metric = ggnn.DistanceMeasure.Cosine
@@ -29,15 +28,20 @@ class GGNN(BaseANN):
         self.index.build(k_build=self.k_build, tau_build=self.tau_build, refinement_iterations=2, measure=self.metric)
 
     def batch_query(self, X, n):
-        self.res = self.index.query(X, n, self.tau_query, self.max_iterations, self.metric)
+        L, D = self.index.query(X, n, self.tau_query, self.max_iterations, self.metric)
+        self.res = L.detach().cpu().numpy()
 
     def get_batch_results(self):
-        L, D = self.res
-        return [list(x[x != -1]) for x in L.detach().cpu().numpy()]
+        return [list(x[x != -1]) for x in self.res]
 
     def set_query_arguments(self, tau_query, max_iterations):
         self.tau_query = tau_query
         self.max_iterations = max_iterations
 
     def __str__(self):
-        return "GGNN(%d, %g, %g, %d)" % (self.k_build, self.tau_build, self.tau_query, self.max_iterations)
+        return "GGNN(k_build=%d, tau_build=%g, tau_query=%g, max_iterations=%d)" % (
+            self.k_build,
+            self.tau_build,
+            self.tau_query,
+            self.max_iterations,
+        )

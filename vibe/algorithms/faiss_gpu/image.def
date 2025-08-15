@@ -2,4 +2,4 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  micromamba install -c conda-forge -c pytorch -c nvidia faiss-gpu=1.11.0
+  micromamba install -c conda-forge -c pytorch -c nvidia faiss-gpu=1.12.0

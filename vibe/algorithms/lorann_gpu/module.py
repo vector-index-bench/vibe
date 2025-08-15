@@ -6,7 +6,6 @@ from ..base.module import BaseANN
 
 
 class LorannGPU(BaseANN):
-
     def __init__(self, metric, global_dim, rank, train_size, n_clusters, precision):
         self.metric = metric
         self.global_dim = global_dim
@@ -27,7 +26,7 @@ class LorannGPU(BaseANN):
             n_clusters=self.n_clusters,
             global_dim=self.global_dim,
             euclidean=self.metric == "euclidean",
-            dtype=self.dtype
+            dtype=self.dtype,
         )
         self.index.build()
 
@@ -43,7 +42,7 @@ class LorannGPU(BaseANN):
             n_clusters=self.n_clusters,
             global_dim=self.global_dim,
             euclidean=self.metric == "euclidean",
-            dtype=self.dtype
+            dtype=self.dtype,
         )
         self.index.build(training_queries=X_learn)
 
@@ -54,14 +53,14 @@ class LorannGPU(BaseANN):
         if X.dtype != np.float32:
             X = X.astype(np.float32)
 
-        self.res = self.index.search(X, n, self.clusters_to_search, self.points_to_rerank)
+        L = self.index.search(X, n, self.clusters_to_search, self.points_to_rerank)
+        self.res = L.detach().cpu().numpy()
 
     def get_batch_results(self):
-        return [list(x[x != -1]) for x in self.res.detach().cpu().numpy()]
+        return [list(x[x != -1]) for x in self.res]
 
     def __str__(self):
-        str_template = "LorannGPU(gd=%d, r=%d, nc=%d, cs=%d, pr=%d)"
-        return str_template % (
+        return "LorannGPU(global_dim=%d, rank=%d, n_clusters=%d, n_probes=%d, rerank=%d)" % (
             self.global_dim,
             self.rank,
             self.n_clusters,

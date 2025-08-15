@@ -8,7 +8,6 @@ from ..base.module import BaseANN
 
 
 class FaissGPU(BaseANN):
-
     def __init__(self, metric):
         self.metric = metric
         self.res = faiss.StandardGpuResources()
@@ -60,7 +59,7 @@ class FaissGPUIVF(FaissGPU):
         self.index.nprobe = n_probe
 
     def __str__(self):
-        return "FaissGPUIVF(n_list={}, n_probes={}, float16={})".format(self.n_list, self.n_probe, self._float16)
+        return "FaissGPUIVF(n_list={}, n_probe={}, float16={})".format(self.n_list, self.n_probe, self._float16)
 
 
 class FaissGPUIVFPQ(FaissGPU):
@@ -98,4 +97,4 @@ class FaissGPUIVFPQ(FaissGPU):
         self.index.nprobe = n_probe
 
     def __str__(self):
-        return "FaissGPUIVFPQ(n_list={}, n_probes={}, code_size={})".format(self.n_list, self.n_probe, self.code_size)
+        return "FaissGPUIVFPQ(n_list={}, n_probe={}, code_size={})".format(self.n_list, self.n_probe, self.code_size)
