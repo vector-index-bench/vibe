@@ -28,7 +28,7 @@ binary:
     run_groups:
       base:
         args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500]]
-        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+        query_args: [[10, 20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 600, 800, 1000]]
 uint8:
   euclidean:
   - base_args: ['@metric']
@@ -59,7 +59,7 @@ uint8:
     run_groups:
       base:
         args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500], [1]]
-        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+        query_args: [[10, 20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 600, 800, 1000]]
   - base_args: ['@metric']
     constructor: FaissNSGQ
     disabled: false
@@ -138,7 +138,7 @@ float:
     run_groups:
       base:
         args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500]]
-        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+        query_args: [[10, 20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 600, 800, 1000]]
   - base_args: ['@metric']
     constructor: FaissHNSWQ
     disabled: true
@@ -148,7 +148,7 @@ float:
     run_groups:
       base:
         args: [[4, 8, 12, 16, 24, 36, 48, 64, 96], [500], [0]]
-        query_args: [[10, 20, 40, 80, 120, 200, 400, 600, 800]]
+        query_args: [[10, 20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 600, 800, 1000]]
   - base_args: ['@metric']
     constructor: FaissNSG
     disabled: false
