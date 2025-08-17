@@ -57,12 +57,12 @@ The evaluation code and some algorithm implementations in VIBE are based on the 
 | [ANNOY](https://github.com/spotify/annoy) | 1.17.3 |
 | [FALCONN++](https://github.com/NinhPham/FalconnPP) | git+5fd3f17 |
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
-| [CAGRA](https://github.com/rapidsai/cuvs) | 25.6.01 |
+| [CAGRA](https://github.com/rapidsai/cuvs) | 25.08.00 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
 | [GLASS](https://github.com/zilliztech/pyglass) | 1.0.5 |
 | [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
-| [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.11.0 |
-| [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.11.0 |
+| [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.12.0 |
+| [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.12.0 |
 | [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.7 |
 | [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.7 |
 | [LoRANN](https://github.com/ejaasaari/lorann) | 0.4 |
@@ -70,7 +70,7 @@ The evaluation code and some algorithm implementations in VIBE are based on the 
 | [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.2 |
 | [NGT-ONNG](https://github.com/yahoojapan/NGT/) | git+c245442 |
 | [NGT-QG](https://github.com/yahoojapan/NGT/) | git+c245442 |
-| [NSG](https://github.com/facebookresearch/faiss) | 1.11.0 |
+| [NSG](https://github.com/facebookresearch/faiss) | 1.12.0 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.5.13 |
 | [RoarGraph](https://github.com/matchyc/RoarGraph) | git+f2b49b6 |
