@@ -49,7 +49,6 @@ class ParlayANN(BaseANN):
 
     def set_query_arguments(self, Q):
         self.Q = Q
-        self.name = "ParlayANN(%d, %d, %g, %d)" % (self.R, self.L, self.alpha, self.Q)
 
     def query(self, v, k):
         if self.metric == "cosine":
@@ -63,6 +62,9 @@ class ParlayANN(BaseANN):
 
     def get_batch_results(self):
         return self.res
+
+    def __str__(self):
+        return "ParlayANN(R=%d, L=%d, alpha=%g, Q=%d)" % (self.R, self.L, self.alpha, self.Q)
 
     def __del__(self):
         import shutil

@@ -39,8 +39,7 @@ class RoarGraph(BaseANN):
         return result_ids
 
     def __str__(self):
-        str_template = "RoarGraph(%d, %d, %d, %d)"
-        return str_template % (
+        return "RoarGraph(M_sq=%d, M_pjbp=%d, L_pjpq=%d, L_pq=%d)" % (
             self.M_sq,
             self.M_pjbp,
             self.L_pjpq,

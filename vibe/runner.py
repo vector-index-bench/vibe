@@ -70,8 +70,7 @@ def run_individual_query(
             ]
             if len(candidates) > count:
                 print(
-                    "warning: algorithm %s returned %d results, but count"
-                    " is only %d)" % (algo, len(candidates), count)
+                    "warning: algorithm %s returned %d results, but count is only %d)" % (algo, len(candidates), count)
                 )
             return (total, candidates)
 
@@ -260,9 +259,7 @@ def run(definition: Definition, dataset_name: str, count: int, run_count: int, b
     from .results import store_results
 
     algo = instantiate_algorithm(definition)
-    assert not definition.query_argument_groups or hasattr(
-        algo, "set_query_arguments"
-    ), f"""\
+    assert not definition.query_argument_groups or hasattr(algo, "set_query_arguments"), f"""\
 error: query argument groups have been specified for {definition.module}.{definition.constructor}({definition.arguments}), but the \
 algorithm instantiated from it does not implement the set_query_arguments \
 function"""

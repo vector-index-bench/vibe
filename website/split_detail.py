@@ -15,5 +15,3 @@ for dataset in all_data["dataset"].unique():
     print(dataset)
     data = all_data.filter(pl.col("dataset") == dataset)
     data.write_parquet(out_dir / f"{dataset}__detail.parquet")
-
-

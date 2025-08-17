@@ -151,19 +151,19 @@ def parse_arguments() -> argparse.Namespace:
         "--runs",
         metavar="COUNT",
         type=positive_int,
-        help="run each algorithm instance %(metavar)s times and use only" " the best result",
+        help="run each algorithm instance %(metavar)s times and use only the best result",
         default=5,
     )
     parser.add_argument(
         "--timeout",
         type=int,
-        help="Timeout (in seconds) for each individual algorithm run, or -1" "if no timeout should be set",
+        help="Timeout (in seconds) for each individual algorithm run, or -1 if no timeout should be set",
         default=8 * 3600,
     )
     parser.add_argument(
         "--local",
         action="store_true",
-        help="If set, then will run everything locally (inside the same " "process) rather than using Singularity",
+        help="If set, then will run everything locally (inside the same process) rather than using Singularity",
     )
     parser.add_argument("--batch", action="store_true", help="If set, algorithms get all queries at once")
     parser.add_argument("--gpu", action="store_true", help="If set, run the benchmark in GPU mode")

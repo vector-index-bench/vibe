@@ -12,7 +12,6 @@ from .yaml import safe_load, YAMLError
 
 
 class Definition:
-
     def __init__(
         self,
         algorithm: str,

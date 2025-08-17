@@ -40,8 +40,7 @@ class MLANN(BaseANN):
         return self.index.ann(v, n, self.voting_threshold, self.dist, return_distances=False)
 
     def __str__(self):
-        str_template = "MLANN(%s, %d, %d, %g)"
-        return str_template % (
+        return "MLANN(type=%s, n_trees=%d, depth=%d, voting_thresh=%g)" % (
             self.index_type,
             self.n_trees,
             self.depth,

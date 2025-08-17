@@ -5,7 +5,6 @@ from ..base.module import BaseANN
 
 
 class FalconnPP(BaseANN):
-
     def __init__(self, metric, numTables, numProj, bucketLimit, alpha, iProbes):
         if metric not in ["ip", "normalized", "cosine"]:
             raise NotImplementedError(f"FALCONN++ does not support metric {metric}")
@@ -43,5 +42,11 @@ class FalconnPP(BaseANN):
         return res[0]
 
     def __str__(self):
-        str_template = "FalconnPP(%d, %d, %d, %g, %d, %d)"
-        return str_template % (self.numTables, self.numProj, self.bucketLimit, self.alpha, self.iProbes, self.qProbes)
+        return "FalconnPP(numTables=%d, numProj=%d, bucketLimit=%d, alpha=%g, iProbes=%d, qProbes=%d)" % (
+            self.numTables,
+            self.numProj,
+            self.bucketLimit,
+            self.alpha,
+            self.iProbes,
+            self.qProbes,
+        )

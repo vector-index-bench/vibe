@@ -7,9 +7,6 @@ from ..base.module import BaseANN
 class Scann(BaseANN):
     def __init__(self, metric, n_leaves, avq_threshold, dims_per_block):
         self.metric = metric
-        self.name = "scann n_leaves={} avq_threshold={:.02f} dims_per_block={}".format(
-            n_leaves, avq_threshold, dims_per_block
-        )
         self.n_leaves = n_leaves
         self.avq_threshold = avq_threshold
         self.dims_per_block = dims_per_block
@@ -40,3 +37,12 @@ class Scann(BaseANN):
 
     def query(self, v, n):
         return self.searcher.search(v, n, self.reorder, self.leaves_to_search)[0]
+
+    def __str__(self):
+        return "ScaNN(n_leaves=%d, avg_threshold=%g, dims_per_block=%d, leaves_to_search=%d, reorder=%d)" % (
+            self.n_leaves,
+            self.avq_threshold,
+            self.dims_per_block,
+            self.leaves_to_search,
+            self.reorder,
+        )

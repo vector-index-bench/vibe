@@ -41,7 +41,6 @@ class FlatNav(BaseANN):
 
     def set_query_arguments(self, ef):
         self.ef_search = ef
-        self.name = "FlatNav(%d, %d, %d)" % (self.max_edges_per_node, self.ef_construction, self.ef_search)
 
     def query(self, v, n):
         if self.metric == "cosine":
@@ -54,3 +53,10 @@ class FlatNav(BaseANN):
         )
 
         return indices
+
+    def __str__(self):
+        return "FlatNav(M=%d, efConstruction=%d, efSearch=%d)" % (
+            self.max_edges_per_node,
+            self.ef_construction,
+            self.ef_search,
+        )

@@ -1155,7 +1155,13 @@ if __name__ == "__main__":
         )
     elif args.plot_type == "critdiff":
         latency_difference_plot(
-            summary, detail, float(args.recall), ID_DATASETS + OOD_DATASETS, output=args.output, algorithms=algorithms, k=count
+            summary,
+            detail,
+            float(args.recall),
+            ID_DATASETS + OOD_DATASETS,
+            output=args.output,
+            algorithms=algorithms,
+            k=count,
         )
     elif args.plot_type == "paper":
         paper(out_dir, summary, detail, query_stats, pca_mahalanobis)

@@ -15,7 +15,9 @@ def is_run(
     batch_mode: bool = False,
     gpu_mode: bool = False,
 ) -> bool:
-    file_path, search_parameters = build_result_filepath(dataset_name, count, definition, query_arguments, batch_mode, gpu_mode)
+    file_path, search_parameters = build_result_filepath(
+        dataset_name, count, definition, query_arguments, batch_mode, gpu_mode
+    )
     return os.path.exists(file_path)
 
 
@@ -59,7 +61,9 @@ def build_result_filepath(
     return os.path.join(*d), search_parameters
 
 
-def store_results(dataset_name: str, count: int, definition: Definition, query_arguments: Any, attrs, results, batch, gpu):
+def store_results(
+    dataset_name: str, count: int, definition: Definition, query_arguments: Any, attrs, results, batch, gpu
+):
     """
     Stores results for an algorithm (and hyperparameters) running against a dataset in a HDF5 file.
 

@@ -46,7 +46,7 @@ class SVSVamana(BaseANN):
         return I[0]
 
     def __str__(self):
-        return "SVSVamana(%d, %g, %d, %d)" % (
+        return "SVSVamana(graph_max_degree=%d, alpha=%g, window_size=%d, search_window_size=%d)" % (
             self.graph_max_degree,
             self.alpha,
             self.window_size,
@@ -113,7 +113,7 @@ class SVSVamanaLVQ(BaseANN):
         return I[0]
 
     def __str__(self):
-        return "SVSVamanaLVQ(%d, %g, %d, %d)" % (
+        return "SVSVamanaLVQ(graph_max_degree=%d, alpha=%g, window_size=%d, search_window_size=%d)" % (
             self.graph_max_degree,
             self.alpha,
             self.window_size,
@@ -182,10 +182,13 @@ class SVSVamanaLeanVec(BaseANN):
         return I[0]
 
     def __str__(self):
-        return "SVSVamanaLeanVec(%d, %g, %d, %d, %d)" % (
-            self.graph_max_degree,
-            self.alpha,
-            self.window_size,
-            self.search_window_size,
-            self.reduced_dimensions,
+        return (
+            "SVSVamanaLeanVec(graph_max_degree=%d, alpha=%g, window_size=%d, search_window_size=%d, reduced_dim=%d)"
+            % (
+                self.graph_max_degree,
+                self.alpha,
+                self.window_size,
+                self.search_window_size,
+                self.reduced_dimensions,
+            )
         )

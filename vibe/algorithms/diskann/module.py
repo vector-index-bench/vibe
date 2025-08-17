@@ -7,7 +7,6 @@ from ..base.module import BaseANN
 
 
 class Vamana(BaseANN):
-
     def __init__(self, metric, graph_degree, complexity, alpha):
         self.metric = {"cosine": "cosine", "euclidean": "l2", "ip": "mips", "normalized": "mips"}[metric]
         self.graph_degree = graph_degree
@@ -44,8 +43,12 @@ class Vamana(BaseANN):
         return results.identifiers
 
     def __str__(self):
-        str_template = "Vamana(%d, %d, %g, %d)"
-        return str_template % (self.complexity, self.graph_degree, self.alpha, self.search_complexity)
+        return "Vamana(complexity=%d, graph_degree=%d, alpha=%g, search_complexity=%g)" % (
+            self.complexity,
+            self.graph_degree,
+            self.alpha,
+            self.search_complexity,
+        )
 
     def __del__(self):
         import shutil

@@ -5,7 +5,6 @@ from ..base.module import BaseANN
 
 
 class Lorann(BaseANN):
-
     def __init__(self, metric, quantization_bits, n_clusters, global_dim, rank, train_size):
         self.metric = metric
         self.quantization_bits = quantization_bits
@@ -99,8 +98,7 @@ class Lorann(BaseANN):
         return self.index.search(q, n, self.clusters_to_search, self.points_to_rerank, False, 1)
 
     def __str__(self):
-        str_template = "Lorann(q=%d, nc=%d, gd=%d, r=%d, ts=%d, cs=%d, pr=%d)"
-        return str_template % (
+        return "Lorann(quant_bits=%d, n_clusters=%d, global_dim=%d, rank=%d, train_size=%d, n_probe=%d, rerank=%d)" % (
             self.quantization_bits,
             self.n_clusters,
             self.global_dim,

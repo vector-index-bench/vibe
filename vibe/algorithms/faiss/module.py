@@ -334,7 +334,7 @@ class FaissHNSW(Faiss):
         return {"dist_comps": faiss.cvar.hnsw_stats.ndis}
 
     def __str__(self):
-        return "FaissHNSW(%s, %d)" % (self.M, self.index.hnsw.efSearch)
+        return "FaissHNSW(M=%d, efSearch=%d)" % (self.M, self.index.hnsw.efSearch)
 
 
 class FaissHNSWQ(Faiss):
@@ -374,7 +374,7 @@ class FaissHNSWQ(Faiss):
         self.index.hnsw.efSearch = ef
 
     def __str__(self):
-        return "FaissHNSWQ(%s, %d)" % (self.M, self.index.hnsw.efSearch)
+        return "FaissHNSWQ(M=%d, efSearch=%d)" % (self.M, self.index.hnsw.efSearch)
 
 
 class FaissBinaryHNSW(Faiss):
@@ -405,7 +405,7 @@ class FaissBinaryHNSW(Faiss):
         self.res = self.index.search(X, n)
 
     def __str__(self):
-        return "FaissBinaryHNSW(%s, %d)" % (self.M, self.index.hnsw.efSearch)
+        return "FaissBinaryHNSW(M=%d, efSearch=%d)" % (self.M, self.index.hnsw.efSearch)
 
 
 class FaissNSG(Faiss):
@@ -437,7 +437,7 @@ class FaissNSG(Faiss):
         self.index.nsg.search_L = search_L
 
     def __str__(self):
-        return "FaissNSG(%d, %d)" % (self.degree, self.index.nsg.search_L)
+        return "FaissNSG(degree=%d, L=%d)" % (self.degree, self.index.nsg.search_L)
 
 
 class FaissNSGQ(Faiss):
@@ -476,4 +476,4 @@ class FaissNSGQ(Faiss):
         self.index.nsg.search_L = search_L
 
     def __str__(self):
-        return "FaissNSGQ(%d, %d)" % (self.degree, self.index.nsg.search_L)
+        return "FaissNSGQ(degree=%d, L=%d)" % (self.degree, self.index.nsg.search_L)

@@ -19,8 +19,15 @@ class HnswLib(BaseANN):
         self.p.set_num_threads(1)
 
     def set_query_arguments(self, ef):
+        self.ef_query = ef
         self.p.set_ef(ef)
-        self.name = "hnswlib(%s, 'efQuery': %s)" % (self.method_param, ef)
 
     def query(self, v, n):
         return self.p.knn_query(np.expand_dims(v, axis=0), k=n)[0][0]
+
+    def __str__(self):
+        return "HNSWLib(M=%d, efConstruction=%d, efQuery=%d)" % (
+            self.method_param["M"],
+            self.method_param["efConstruction"],
+            self.ef_query,
+        )

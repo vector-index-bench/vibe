@@ -48,7 +48,7 @@ class MRPT(BaseANN):
         return self._index.ann(v)
 
     def __str__(self):
-        str_template = "MRPT(target recall=%.3f, trees=%d, depth=%d, vote threshold=%d, estimated recall=%.3f)"
+        str_template = "MRPT(target recall=%.3f, trees=%d, depth=%d, votes=%d, estimated recall=%.3f)"
         return str_template % (
             self._target_recall,
             self._par["n_trees"],

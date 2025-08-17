@@ -5,7 +5,6 @@ from ..base.module import BaseANN
 
 
 class SymphonyQG(BaseANN):
-
     def __init__(self, metric, degree_bound, EF, num_iter):
         if metric not in ["euclidean", "cosine", "normalized"]:
             raise NotImplementedError(f"Metric {metric} not implemented for SymphonyQG")
@@ -39,5 +38,9 @@ class SymphonyQG(BaseANN):
         return self.index.search(v, n)
 
     def __str__(self):
-        str_template = "SymphonyQG(%d, %d, %d, %d)"
-        return str_template % (self.degree_bound, self.EF, self.num_iter, self.beam_size)
+        return "SymphonyQG(degree_bound=%d, EF=%d, num_iter=%d, beam_size=%d)" % (
+            self.degree_bound,
+            self.EF,
+            self.num_iter,
+            self.beam_size,
+        )
