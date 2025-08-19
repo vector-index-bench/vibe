@@ -1,6 +1,6 @@
 <h1 align="center">VIBE</h1>
 <div align="center">
-Vector Index Benchmark for Embeddings (VIBE) is an extensible benchmark for approximate nearest neighbor search methods, or vector indexes, using modern embedding datasets.
+<b>Vector Index Benchmark for Embeddings (VIBE)</b> is an extensible benchmark for approximate nearest neighbor search methods, or vector indexes, using modern embedding datasets.
 </div>
 <br/>
 
@@ -8,24 +8,135 @@ Vector Index Benchmark for Embeddings (VIBE) is an extensible benchmark for appr
 
 ---
 
-- Modern vector index benchmark with embedding datasets
-- Includes datasets for both in-distribution and out-out-distribution settings
-- Includes the most comprehensive collection of state-of-the-art vector search algorithms
-- Support for quantized datasets in both 8-bit integer and binary precision
-- Support for GPU algorithms
-- Support for HPC environments with Slurm
+- 📊 Modern vector index benchmark with embedding datasets
+- 🎯 Includes datasets for both in-distribution and out-out-distribution settings
+- 🏆 Includes the most comprehensive collection of state-of-the-art vector search algorithms
+- 💎 Support for quantized datasets in both 8-bit integer and binary precision
+- 🖥️ Support for HPC environments with Slurm and NUMA
+- 🚀 Support for GPU algorithms
+
+## About
 
 ### Results
-
 The current VIBE results can be viewed on our website:
 
 https://vector-index-bench.github.io
 
 The website also features several other tools and visualizations to explore the results.
 
-### Credits
+### Publication
+E. Jääsaari, V. Hyvönen, M. Ceccarello, T. Roos, M. Aumüller. [VIBE: Vector Index Benchmark for Embeddings](https://arxiv.org/pdf/2505.17810). _arXiv preprint arXiv:2505.17810_, 2025.
 
+### Authors
+VIBE is maintained by [Elias Jääsaari](https://github.com/ejaasaari), [Matteo Ceccarello](https://github.com/Cecca), and [Martin Aumüller](https://github.com/maumueller).
+
+### Credits
 The evaluation code and some algorithm implementations in VIBE are based on the [ann-benchmarks](https://github.com/erikbern/ann-benchmarks/) project.
+
+### License
+VIBE is available under the MIT License (see [LICENSE](LICENSE)). The [pyyaml](https://github.com/yaml/pyyaml) library is also distributed in the [vibe](vibe) folder under the MIT License.
+
+## Getting started
+
+### Requirements
+
+- [Apptainer](https://apptainer.org/docs/admin/main/installation.html#install-from-pre-built-packages) (or [Singularity](https://docs.sylabs.io/guides/4.3/user-guide/quick_start.html))
+- Python 3.6 or newer
+
+Some algorithms may require that the CPU supports AVX-512 instructions. The GPU algorithms assume that an NVIDIA GPU is available.
+
+### Building library images
+
+Building all library images can be done using
+```sh
+./install.sh
+```
+
+The script can be used to either build images for all available libraries (`./install.sh`) or an image for a single library (e.g. `./install.sh --algorithm faiss`).
+
+> [!TIP]
+> `install.sh` takes an argument `--build-dir` that specifies the temporary build directory. For example, to speed up the build in a cluster environment, you can set the build directory to a location on an SSD while the project files are on a slower storage medium.
+
+> [!TIP]
+> See an [example Slurm job](slurm/install.sh) for building the libraries using Slurm.
+
+### Running benchmarks
+
+The benchmarks for a single dataset can be run using `run.py`. For example:
+
+```sh
+python3 run.py --dataset agnews-mxbai-1024-euclidean
+```
+
+The run.py script does not depend on any external libraries and can therefore be used without a container or a virtual environment.
+
+Common options for run.py:
+- `--parallelism n`: Use `n` processes for benchmarking.
+- `--algorithm algo`: Run the benchmark for only `algo`.
+- `--count k`: Run the benchmarks using `k` nearest neighbors (default 100).
+- `--gpu`: Run the benchmark in GPU mode.
+
+The benchmark should take less than 24 hours to run for a given dataset using parallelism > 8. We recommend having at least 16 GB of memory per used process.
+
+> [!TIP]
+> See an [example Slurm job](slurm/run.sh) for running the benchmark using Slurm.
+
+### Plotting results
+
+You should first build the `plot.sif` image:
+```sh
+singularity build plot.sif plot.def
+```
+
+Before plotting, the current results must first be exported:
+```sh
+./export_results.sh --parallelism 8
+```
+
+The results for a dataset can then plotted with e.g.:
+```sh
+./plot.sh --dataset agnews-mxbai-1024-euclidean
+```
+
+To plot the radar chart above, use:
+```sh
+./plot.sh --plot-type radar
+```
+
+For all available options, see:
+```
+./plot.sh --help
+```
+
+You can also use [uv](https://docs.astral.sh/uv/) to directly run `export_results.py` and `plot.py` without building the container image if preferable. The arguments for these scripts are the same as above.
+
+### Creating datasets from scratch
+
+The benchmark code downloads precomputed embedding datasets. However, the datasets can also be recreated from scratch, and it is also possible to create new datasets by modifying the [datasets.py](vibe/datasets.py) file.
+
+Creating the datasets can be done using `create_dataset.sh`. It first requires that `dataset.sif` is built:
+```sh
+singularity build dataset.sif dataset.def
+```
+
+The `VIBE_CACHE` environment variable should be set to a cache directory with at least 200 GB of free space when creating image embeddings using the Landmark or ImageNet datasets. Datasets can then be created using the `--dataset argument` (the `--nv` argument specifies that an available GPU can be used):
+```sh
+export VIBE_CACHE=$LOCAL_SCRATCH
+./create_dataset.sh --singularity-args "--bind $LOCAL_SCRATCH:$LOCAL_SCRATCH --nv" --dataset agnews-mxbai-1024-euclidean
+```
+
+> [!TIP]
+> See an [example Slurm job](slurm/dataset.sh) for creating datasets using Slurm.
+
+### Adding a new method to the benchmark
+
+Add your algorithm in the folder vibe/algorithms/{METHOD}/ by providing
+
+- Python wrapper in module.py
+- Singularity container defination in image.def
+- Hyperparameter grid in config.yml
+
+## Evaluation
 
 ### Datasets
 
@@ -77,99 +188,3 @@ The evaluation code and some algorithm implementations in VIBE are based on the 
 | [ScaNN](https://github.com/google-research/google-research/tree/master/scann) | 1.4.0 |
 | [SymphonyQG](https://github.com/gouyt13/SymphonyQG) | git+32a0019 |
 | [Vamana (DiskANN)](https://github.com/microsoft/DiskANN) | 0.7.0 |
-
-## Getting started
-
-### Requirements
-
-- [Apptainer](https://apptainer.org/docs/admin/main/installation.html#install-from-pre-built-packages) (or [Singularity](https://docs.sylabs.io/guides/4.3/user-guide/quick_start.html))
-- Python 3.6+
-
-Some algorithms may require that the CPU supports AVX-512 instructions. The GPU algorithms assume that an NVIDIA GPU is available.
-
-### Building library images
-
-Building all library images can be done using
-```sh
-./install.sh
-```
-
-The script can be used to either build images for all available libraries (`./install.sh`) or an image for a single library (e.g. `./install.sh --algorithm faiss`).
-
-> [!TIP]
-> `install.sh` takes an argument `--build-dir` that specifies the temporary build directory. For example, to speed up the build in a cluster environment, you can set the build directory to a location on an SSD while the project files are on a slower storage medium.
-
-> [!TIP]
-> See an [example Slurm job](slurm/install.sh) for building the libraries using Slurm.
-
-### Running benchmarks
-
-The benchmarks for a single dataset can be run using `run.py`. For example:
-
-```sh
-python3 run.py --dataset agnews-mxbai-1024-euclidean
-```
-
-The run.py script does not depend on any external libraries and can therefore be used without a container or a virtual environment.
-
-Common options for run.py:
-- `--parallelism n`: Use `n` processes for benchmarking.
-- `--algorithm algo`: Run the benchmark for only `algo`.
-- `--count k`: Run the benchmarks using `k` nearest neighbors (default 100).
-- `--gpu`: Run the benchmark in GPU mode.
-
-The benchmark should take less than 24 hours to run for a given dataset using parallelism > 8. We recommend having at least 16 GB of memory per used process.
-
-> [!TIP]
-> See an [example Slurm job](slurm/run.sh) for running the benchmark using Slurm.
-
-### Plotting results
-
-You should first build the `plot.sif` image:
-```sh
-singularity build plot.sif plot.def
-```
-
-Before plotting, the current results must first be exported:
-```sh
-./export_results.sh
-```
-
-The results for a dataset can then plotted with e.g.:
-```sh
-./plot.sh --dataset agnews-mxbai-1024-euclidean
-```
-
-To plot the radar chart above, use:
-```sh
-./plot.sh --plot-type radar
-```
-
-For all available options, see:
-```
-./plot.sh --help
-```
-
-You can also use [uv](https://docs.astral.sh/uv/) to directly run `export_results.py` and `plot.py` without building the container image if preferable. The arguments for these scripts are the same as above.
-
-### Creating datasets from scratch
-
-The benchmark code downloads precomputed embedding datasets. However, the datasets can also be recreated from scratch, and it is also possible to create new datasets by modifying the [datasets.py](vibe/datasets.py) file.
-
-Creating the datasets can be done using `create_dataset.sh`. It first requires that `dataset.sif` is built:
-```sh
-singularity build dataset.sif dataset.def
-```
-
-The `VIBE_CACHE` environment variable should be set to a cache directory with at least 200 GB of free space when creating image embeddings using the Landmark or ImageNet datasets. Datasets can then be created using the `--dataset argument` (the `--nv` argument specifies that an available GPU can be used):
-```sh
-export VIBE_CACHE=$LOCAL_SCRATCH
-./create_dataset.sh --singularity-args "--bind $LOCAL_SCRATCH:$LOCAL_SCRATCH --nv" --dataset agnews-mxbai-1024-euclidean
-```
-
-> [!TIP]
-> See an [example Slurm job](slurm/dataset.sh) for creating datasets using Slurm.
-
-## License
-
-VIBE is available under the MIT License (see [LICENSE](LICENSE)). The [pyyaml](https://github.com/yaml/pyyaml) library is also distributed in the [vibe](vibe) folder under the MIT License.
