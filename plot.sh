@@ -12,6 +12,9 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+export MPLCONFIGDIR=/tmp/matplotlib
+export FONTCONFIG_CACHE=/tmp/fontconfig
+
 if [ $local_mode = "false" ]; then
     singularity exec "plot.sif" python3 plot.py $args
 else

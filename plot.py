@@ -246,6 +246,7 @@ def radar_at_recall_plot(
     )
 
     plt.tight_layout()
+    print("Writing", out_dir / f"radar-{recall}.png")
     plt.savefig(out_dir / f"radar-{recall}.png", dpi=300)
     plt.close()
 
@@ -452,6 +453,7 @@ def pareto_plot(
                 if ax.get_legend() is not None:
                     ax.get_legend().remove()
             fig.tight_layout(pad=0.1, w_pad=1.08, h_pad=1.08)
+            print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall.png")
             fig.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall.png", dpi=300)
             plt.close(fig)
 
@@ -459,6 +461,7 @@ def pareto_plot(
             plt.legend(handles, labels, frameon=False)
             plt.axis("off")
             plt.tight_layout()
+            print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall-legend.png")
             plt.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall-legend.png", dpi=300)
             plt.close()
 
@@ -470,11 +473,13 @@ def pareto_plot(
             legend_pad = 0.20
             fig.tight_layout(rect=[0, 0, 1 - legend_pad, 1], pad=0.1, w_pad=1.08, h_pad=1.08)
             fig.legend(handles, labels, loc="center right")
+            print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall.png")
             fig.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall.png", dpi=300)
             plt.close(fig)
 
     else:
         fig.tight_layout(pad=0.1, w_pad=1.08, h_pad=1.08)
+        print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall.png")
         fig.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall.png", dpi=300)
         plt.close(fig)
 
@@ -596,6 +601,7 @@ def split_difficulties_plot(
 
     plt.gca().get_yaxis().set_visible(False)
     plt.tight_layout(pad=0, h_pad=1.08, w_pad=1.08)
+    print("Writing", out_dir / f"{'__'.join(datasets)}-split-performance.png")
     plt.savefig(out_dir / f"{'__'.join(datasets)}-split-performance.png", dpi=300)
     plt.close()
 
@@ -657,6 +663,7 @@ def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
     ax.spines[:].set_visible(False)
 
     plt.tight_layout()
+    print("Writing", out_dir / f"distribution-{x}.png")
     plt.savefig(out_dir / f"distribution-{x}.png", dpi=300)
     plt.close()
 
@@ -760,6 +767,7 @@ def performance_gap_plot(out_dir, id_dataset, ood_dataset, summary, pca_mahalano
         ax_mahalanobis.spines["bottom"].set_visible(True)
 
     plt.tight_layout()
+    print("Writing", out_dir / f"performance-gap-{ood_dataset}.png")
     plt.savefig(out_dir / f"performance-gap-{ood_dataset}.png", dpi=300)
     plt.close()
 
@@ -1022,6 +1030,7 @@ def latency_difference_plot(summary, detail, recall, datasets, algorithms, outpu
         plt.title(dataset)
         plt.gca().set_axis_off()
         plt.tight_layout()
+        print("Writing", pathlib.Path(output) / f"latency-critdiff-{dataset}-{recall}.png")
         plt.savefig(pathlib.Path(output) / f"latency-critdiff-{dataset}-{recall}.png")
 
 
