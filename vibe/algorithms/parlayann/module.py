@@ -16,11 +16,11 @@ def write_bin(filename, X):
 
 
 class ParlayANN(BaseANN):
-    def __init__(self, metric, R, L, alpha):
+    def __init__(self, metric, R, alpha, L):
         self.metric = metric
         self.R = R
-        self.L = L
         self.alpha = alpha
+        self.L = L
         self.two_pass = True
         self.limit = 1000
 
