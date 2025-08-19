@@ -108,7 +108,8 @@ For all available options, see:
 ./plot.sh --help
 ```
 
-You can also use [uv](https://docs.astral.sh/uv/) to directly run `export_results.py` and `plot.py` without building the container image if preferable. The arguments for these scripts are the same as above.
+> [!TIP]
+> You can also use [uv](https://docs.astral.sh/uv/) to directly run `export_results.py` and `plot.py` without building the container image if preferable. The arguments for these scripts are the same as above.
 
 ### Creating datasets from scratch
 
