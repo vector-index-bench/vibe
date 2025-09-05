@@ -8,6 +8,7 @@
 # ]
 # ///
 
+import sys
 import numpy as np
 import pathlib
 import argparse
@@ -81,7 +82,9 @@ def export_results(path, data_dir):
 def _process_file(file_path, data_dir):
     try:
         compute_metrics(file_path, data_dir)
-    except:
+    except KeyboardInterrupt:
+        raise
+    except Exception:
         print(f"Invalid results file {file_path} -- skipping")
         return None, None
 
@@ -113,15 +116,21 @@ def export_all_results(path, data_dir, parallelism, output_summary, output_dir):
     with concurrent.futures.ProcessPoolExecutor(max_workers=parallelism) as pool:
         futures = [pool.submit(_process_file, file_path, data_dir) for file_path in hdf5_files]
 
-        with tqdm(total=len(futures), desc="Exporting results") as pbar:
-            for future in concurrent.futures.as_completed(futures):
-                file_summaries, details_map = future.result()
-                if file_summaries is not None and details_map is not None:
-                    summaries.extend(file_summaries)
-                    for dataset, detail_list in details_map.items():
-                        dataset_details[dataset].extend(detail_list)
-
-                pbar.update(1)
+        try:
+            with tqdm(total=len(futures), desc="Exporting results") as pbar:
+                for future in concurrent.futures.as_completed(futures):
+                    file_summaries, details_map = future.result()
+                    if file_summaries is not None and details_map is not None:
+                        summaries.extend(file_summaries)
+                        for dataset, detail_list in details_map.items():
+                            dataset_details[dataset].extend(detail_list)
+                    pbar.update(1)
+        except KeyboardInterrupt:
+            for f in futures:
+                f.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
+            print("Interrupted! Cancelling remaining tasks…")
+            raise
 
     for dataset, detail_frames in dataset_details.items():
         if detail_frames:
@@ -313,4 +322,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Aborted by user (Ctrl+C).")
+        sys.exit(130)
