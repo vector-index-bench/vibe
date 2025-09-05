@@ -51,6 +51,13 @@ float:
         args: [[2048], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
         query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
   euclidean:
+  - base_args: ['@metric']
+    constructor: Scann
+    disabled: false
+    singularity_image: scann
+    module: vibe.algorithms.scann
+    name: scann
+    run_groups:
       scann-512:
         args: [[512], [.nan], [1, 2, 3, 4]]
         query_args: [[2, 4, 8, 16, 32, 64], [100, 200, 300, 400, 600, 800, 1000]]
