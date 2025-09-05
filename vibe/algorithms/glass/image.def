@@ -2,7 +2,12 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  micromamba install -y -q python=3.10
-  micromamba clean --all --yes
+  git clone https://github.com/zilliztech/pyglass
 
-  pip install --no-cache-dir glassppy==1.0.5
+  cd pyglass
+  git config --global --add safe.directory /pyglass
+  git reset --hard 8c69018deb7cd1fa1dfc7b1f8d1d49129e17d86c
+
+  sed -i 's/#if defined(__AVX512F__)/#if defined(__AVX512F__) \&\& defined(__AVX512VPOPCNTDQ__)/' glass/quant/sq1_quant.hpp
+
+  pip install -v -e "python"

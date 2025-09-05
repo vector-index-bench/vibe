@@ -171,7 +171,7 @@ Add your algorithm in the folder vibe/algorithms/{METHOD}/ by providing
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
 | [CAGRA](https://github.com/rapidsai/cuvs) | 25.08.00 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
-| [GLASS](https://github.com/zilliztech/pyglass) | 1.0.5 |
+| [GLASS](https://github.com/zilliztech/pyglass) | git+8c69018 |
 | [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
 | [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.12.0 |
 | [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.12.0 |
