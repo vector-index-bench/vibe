@@ -43,7 +43,14 @@ VIBE is available under the MIT License (see [LICENSE](LICENSE)). The [pyyaml](h
 - [Apptainer](https://apptainer.org/docs/admin/main/installation.html#install-from-pre-built-packages) (or [Singularity](https://docs.sylabs.io/guides/4.3/user-guide/quick_start.html))
 - Python 3.6 or newer
 
-Some algorithms may require that the CPU supports AVX-512 instructions. The GPU algorithms assume that an NVIDIA GPU is available.
+For example, to install Apptainer on Ubuntu:
+```sh
+$ sudo add-apt-repository -y ppa:apptainer/ppa
+$ sudo apt update
+$ sudo apt install -y apptainer
+```
+
+Some algorithms may require that the CPU supports AVX-512 instructions and some algorithms may require an Intel CPU due to a dependency on Intel MKL. The GPU algorithms assume that an NVIDIA GPU is available.
 
 ### Building library images
 
@@ -72,7 +79,8 @@ The run.py script does not depend on any external libraries and can therefore be
 
 Common options for run.py:
 - `--parallelism n`: Use `n` processes for benchmarking.
-- `--algorithm algo`: Run the benchmark for only `algo`.
+- `--module mod`: Run the benchmark only for algorithms in module (library) `mod`.
+- `--algorithm algo`: Run the benchmark for only algorithm `algo`.
 - `--count k`: Run the benchmarks using `k` nearest neighbors (default 100).
 - `--gpu`: Run the benchmark in GPU mode.
 
