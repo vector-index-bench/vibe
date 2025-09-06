@@ -12,7 +12,7 @@ From: ubuntu:24.04
   apt-get clean
   rm -rf /var/lib/apt/lists/*
 
-  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/2.1.1 | tar -xvj bin/micromamba
+  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/2.3.2 | tar -xvj bin/micromamba
 
   mkdir -p /opt/env/micromamba
 
@@ -26,14 +26,8 @@ From: ubuntu:24.04
   micromamba install -y -q -f /environment.yml
   micromamba clean --all --yes
 
-  pip install --no-cache-dir torch==2.7.0 torchvision==0.22.0
-  pip install --no-cache-dir timm==1.0.15 transformers==4.51.3 sentence-transformers==4.1.0 accelerate==1.6.0 hf-xet==1.1.0 xformers==0.0.30
-
-  git clone https://github.com/facebookresearch/perception_models/
-  cd perception_models
-  git config --global --add safe.directory '*'
-  git reset --hard 61dd42340bc523e4cad7aa32c6f99793ca00d1da
-  pip install --no-cache-dir ftfy==6.3.1 omegaconf==2.3.0
+  pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0
+  pip install --no-cache-dir timm==1.0.19 transformers==4.56.1 sentence-transformers==5.1.0 accelerate==1.10.1 hf-xet==1.1.9 xformers==0.0.32.post2
 
   echo 'export MAMBA_ROOT_PREFIX=/opt/env/micromamba' >> $SINGULARITY_ENVIRONMENT
   echo 'eval "$(micromamba shell hook -s posix)"' >> $SINGULARITY_ENVIRONMENT

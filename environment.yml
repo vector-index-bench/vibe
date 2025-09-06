@@ -4,9 +4,9 @@ channels:
 dependencies:
   - python=3.11
   - ansicolors=1.1.8
-  - h5py=3.13.0
-  - matplotlib=3.10.1
-  - numpy=2.2.5
+  - h5py=3.14.0
+  - matplotlib=3.10.6
+  - numpy=2.2.6
   - numba=0.61.2
   - psutil=7.0.0
-  - pybind11=2.13.6
+  - pybind11=3.0.1

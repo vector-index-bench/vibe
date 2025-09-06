@@ -9,7 +9,7 @@ From: ubuntu:24.04
   apt-mark hold openssh-client
   apt-get install -y build-essential git curl wget cmake
 
-  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/2.1.0 | tar -xvj bin/micromamba
+  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/2.3.2 | tar -xvj bin/micromamba
 
   mkdir -p /opt/env/micromamba
 

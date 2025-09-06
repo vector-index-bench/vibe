@@ -180,12 +180,12 @@ Add your algorithm in the folder vibe/algorithms/{METHOD}/ by providing
 | [LoRANN](https://github.com/ejaasaari/lorann) | 0.4 |
 | [MLANN](https://github.com/ejaasaari/mlann) | git+f5d966b |
 | [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.2 |
-| [NGT-ONNG](https://github.com/yahoojapan/NGT/) | git+c245442 |
-| [NGT-QG](https://github.com/yahoojapan/NGT/) | git+c245442 |
+| [NGT-ONNG](https://github.com/yahoojapan/NGT/) | 2.4.5 |
+| [NGT-QG](https://github.com/yahoojapan/NGT/) | 2.4.5 |
 | [NSG](https://github.com/facebookresearch/faiss) | 1.12.0 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.5.13 |
 | [RoarGraph](https://github.com/matchyc/RoarGraph) | git+f2b49b6 |
-| [ScaNN](https://github.com/google-research/google-research/tree/master/scann) | 1.4.0 |
+| [ScaNN](https://github.com/google-research/google-research/tree/master/scann) | 1.4.2 |
 | [SymphonyQG](https://github.com/gouyt13/SymphonyQG) | git+32a0019 |
 | [Vamana (DiskANN)](https://github.com/microsoft/DiskANN) | 0.7.0 |

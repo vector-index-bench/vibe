@@ -5,7 +5,7 @@ From: base.sif
   mkdir -p /cache
   export TMPDIR=/cache
 
-  pip install --no-cache-dir lorann==0.3
-  pip install --no-cache-dir torch==2.7.1
+  pip install --no-cache-dir lorann==0.4
+  pip install --no-cache-dir torch==2.8.0
 
   echo 'export TRITON_CACHE_DIR=./.triton' >> $SINGULARITY_ENVIRONMENT

@@ -6,12 +6,12 @@ channels:
   - pytorch
 dependencies:
   - python=3.11
-  - cupy=13.4.1
-  - cuvs=25.4.0
-  - datasets=3.5.0
+  - cupy=13.6.0
+  - cuvs=25.08.00
+  - datasets=4.0.0
   - einops=0.8.1
-  - faiss-cpu=1.11.0
-  - h5py=3.13.0
+  - faiss-cpu=1.12.0
+  - h5py=3.14.0
   - litellm
   - numba=0.61.2
   - numpy=1.26.4
