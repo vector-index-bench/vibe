@@ -395,49 +395,6 @@ def clip_text_embedding():
     return f
 
 
-def perception_image_embedding():
-    sys.path.append("/perception_models")
-
-    import core.vision_encoder.pe as pe
-    import core.vision_encoder.transforms as transforms
-
-    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-
-    model = pe.CLIP.from_config("PE-Core-B16-224", pretrained=True)
-    model = model.to(device)
-    preprocess = transforms.get_image_transform(model.image_size)
-
-    def transform(image):
-        return preprocess(image).to(device)
-
-    def f(images):
-        with torch.no_grad():
-            image_features, _, _ = model(images)
-            return image_features.cpu().numpy()
-
-    return f, transform
-
-
-def perception_text_embedding():
-    sys.path.append("/perception_models")
-
-    import core.vision_encoder.pe as pe
-    import core.vision_encoder.transforms as transforms
-
-    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-
-    model = pe.CLIP.from_config("PE-Core-B16-224", pretrained=True)
-    model = model.to(device)
-    tokenizer = transforms.get_text_tokenizer(model.context_length)
-
-    def f(sentences):
-        with torch.no_grad():
-            _, text_features, _ = model(text=tokenizer(sentences).to(device))
-            return text_features.cpu().numpy()
-
-    return f
-
-
 def flava_image_embedding():
     import torch.nn.functional as F
     from transformers import FlavaModel, FlavaProcessor
@@ -720,6 +677,47 @@ def snowflake_embed(model="arctic-embed-m-v2.0", doc_type="corpus"):
     return f
 
 
+def gemma_embed(doc_type="corpus"):
+    from sentence_transformers import SentenceTransformer
+
+    model = SentenceTransformer("google/embeddinggemma-300m")
+
+    def f(sentences):
+        if doc_type == "query":
+            return model.encode_query(sentences)
+        return model.encode_document(sentences)
+
+    return f
+
+
+def potion_embed(doc_type="corpus"):
+    from model2vec import StaticModel
+
+    model = StaticModel.from_pretrained("minishlab/potion-retrieval-32M")
+    return model.encode
+
+
+def muvera_embed(k_sim=5, dim_proj=8, doc_type="corpus"):
+    from fastembed import LateInteractionTextEmbedding
+    from fastembed.postprocess import Muvera
+
+    if torch.accelerator.is_available():
+        providers = ["CUDAExecutionProvider"]
+    else:
+        providers = ["CPUExecutionProvider"]
+
+    model = LateInteractionTextEmbedding(
+        "colbert-ir/colbertv2.0", lazy_load=True, cache_dir=VIBE_CACHE, providers=providers
+    )
+    muvera = Muvera.from_multivector_model(model, k_sim=k_sim, dim_proj=dim_proj, r_reps=20)
+
+    def f(sentences):
+        g = muvera.process_document if doc_type == "corpus" else muvera.process_query
+        return numpy.array([g(mv) for mv in model.embed(sentences)])
+
+    return f
+
+
 def codet5p_embed():
     from transformers import AutoModel, AutoTokenizer
 
@@ -743,18 +741,6 @@ def nomic_code_embed():
     from sentence_transformers import SentenceTransformer
 
     model = SentenceTransformer("nomic-ai/CodeRankEmbed", trust_remote_code=True)
-    model.max_seq_length = 256
-
-    def f(codes):
-        return model.encode(codes)
-
-    return f
-
-
-def qodo_embed():
-    from sentence_transformers import SentenceTransformer
-
-    model = SentenceTransformer("Qodo/Qodo-Embed-1-1.5B")
     model.max_seq_length = 256
 
     def f(codes):
