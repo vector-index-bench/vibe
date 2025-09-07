@@ -1,12 +1,18 @@
-<h1 align="center">VIBE</h1>
+![Radar chart](fig/radar-0.95.png)
+
 <div align="center">
 <b>Vector Index Benchmark for Embeddings (VIBE)</b> is an extensible benchmark for approximate nearest neighbor search methods, or vector indexes, using modern embedding datasets.
 </div>
 <br/>
 
-![Radar chart](fig/radar-0.95.png)
+<div align="center">
+    <a href="https://vector-index-bench.github.io"><img src="https://img.shields.io/badge/Results-Website-blue" alt="Website" /></a>
+    <a href="https://arxiv.org/pdf/2505.17810"><img src="https://img.shields.io/badge/Paper-arXiv%3A_VIBE-salmon" alt="Paper" /></a>
+    <a href="https://github.com/vector-index-bench/vibe/blob/master/LICENSE"><img src="https://img.shields.io/github/license/vector-index-bench/vibe" alt="License" /></a>
+    <a href="https://github.com/vector-index-bench/vibe/stargazers"><img src="https://img.shields.io/github/stars/vector-index-bench/vibe" alt="GitHub stars" /></a>
+</div>
 
----
+## Overview
 
 - 📊 Modern vector index benchmark with embedding datasets
 - 🎯 Includes datasets for both in-distribution and out-out-distribution settings
@@ -14,8 +20,6 @@
 - 💎 Support for quantized datasets in both 8-bit integer and binary precision
 - 🖥️ Support for HPC environments with Slurm and NUMA
 - 🚀 Support for GPU algorithms
-
-## About
 
 ### Results
 The current VIBE results can be viewed on our website:
@@ -45,9 +49,9 @@ VIBE is available under the MIT License (see [LICENSE](LICENSE)). The [pyyaml](h
 
 For example, to install Apptainer on Ubuntu:
 ```sh
-$ sudo add-apt-repository -y ppa:apptainer/ppa
-$ sudo apt update
-$ sudo apt install -y apptainer
+sudo add-apt-repository -y ppa:apptainer/ppa
+sudo apt update
+sudo apt install -y apptainer
 ```
 
 Some algorithms may require that the CPU supports AVX-512 instructions and some algorithms may require an Intel CPU due to a dependency on Intel MKL. The GPU algorithms assume that an NVIDIA GPU is available.
@@ -139,7 +143,7 @@ export VIBE_CACHE=$LOCAL_SCRATCH
 
 ### Adding a new method to the benchmark
 
-Add your algorithm in the folder vibe/algorithms/{METHOD}/ by providing
+Add your algorithm in the folder `vibe/algorithms/{METHOD}/` by providing
 
 - Python wrapper in module.py
 - Singularity container defination in image.def
