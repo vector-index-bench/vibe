@@ -27,13 +27,7 @@ def get_recall_values(dataset_distances, run_distances, count, epsilon=1e-3):
     return recalls
 
 
-def compute_metrics(path, data_dir):
-    true_distances = {}
-    for data_path in pathlib.Path(data_dir).glob("**/*.hdf5"):
-        name = data_path.name.replace(".hdf5", "")
-        with h5py.File(data_path) as hfp:
-            true_distances[name] = hfp["distances"][:]
-
+def compute_metrics(path, true_distances):
     with h5py.File(path, "r+") as hfp:
         for query_params in hfp.keys():
             dataset = hfp[query_params].attrs["dataset"]
@@ -79,12 +73,12 @@ def export_results(path, data_dir):
         print(f"Unable to open {path} -- skipping")
 
 
-def _process_file(file_path, data_dir):
+def _process_file(file_path, data_dir, true_distances):
     try:
-        compute_metrics(file_path, data_dir)
+        compute_metrics(file_path, true_distances)
     except KeyboardInterrupt:
         raise
-    except Exception:
+    except Exception as e:
         print(f"Invalid results file {file_path} -- skipping")
         return None, None
 
@@ -113,8 +107,18 @@ def export_all_results(path, data_dir, parallelism, output_summary, output_dir):
     summaries = []
     dataset_details = defaultdict(list)
 
+    true_distances = {}
+    for data_path in pathlib.Path(data_dir).glob("**/*.hdf5"):
+        try:
+            name = data_path.name.replace(".hdf5", "")
+            with h5py.File(data_path) as hfp:
+                true_distances[name] = hfp["distances"][:]
+        except Exception as e:
+            print(f"Invalid dataset file {data_path}: {e}")
+            continue
+
     with concurrent.futures.ProcessPoolExecutor(max_workers=parallelism) as pool:
-        futures = [pool.submit(_process_file, file_path, data_dir) for file_path in hdf5_files]
+        futures = [pool.submit(_process_file, file_path, data_dir, true_distances) for file_path in hdf5_files]
 
         try:
             with tqdm(total=len(futures), desc="Exporting results") as pbar:
@@ -163,20 +167,24 @@ def export_query_stats(data_dir, output_file):
     stats = []
     with tqdm(total=len(hdf5_files), desc="Exporting query stats") as pbar:
         for path in hdf5_files:
-            with h5py.File(path) as hfp:
-                name = path.name.replace(".hdf5", "")
-                distances = hfp["distances"][:]
-                avg_distances = hfp["avg_distances"][:]
-                metrics = dict(dataset=name, query_index=np.arange(distances.shape[0]))
-                for k in [1, 10, 100]:
-                    if k > 1:
-                        metrics[f"lid{k}"] = np.array([compute_lid(ds, k) for ds in distances])
-                    metrics[f"rc{k}"] = avg_distances / distances[:, k - 1]
-                stats.append(pl.DataFrame(metrics))
+            try:
+                with h5py.File(path) as hfp:
+                    name = path.name.replace(".hdf5", "")
+                    distances = hfp["distances"][:]
+                    avg_distances = hfp["avg_distances"][:]
+                    metrics = dict(dataset=name, query_index=np.arange(distances.shape[0]))
+                    for k in [1, 10, 100]:
+                        if k > 1:
+                            metrics[f"lid{k}"] = np.array([compute_lid(ds, k) for ds in distances])
+                        metrics[f"rc{k}"] = avg_distances / distances[:, k - 1]
+                    stats.append(pl.DataFrame(metrics))
+            except Exception as e:
+                print(f"Skipping invalid HDF5 file {path}: {e}")
             pbar.update(1)
 
-    stats = pl.concat(stats)
-    stats.write_parquet(output_file)
+    if stats:
+        stats = pl.concat(stats)
+        stats.write_parquet(output_file)
 
 
 def export_data_info(data_dir, output_file):
