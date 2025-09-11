@@ -6,8 +6,6 @@ From: base.sif
 
   cd pyglass
   git config --global --add safe.directory /pyglass
-  git reset --hard 8c69018deb7cd1fa1dfc7b1f8d1d49129e17d86c
-
-  sed -i 's/#if defined(__AVX512F__)/#if defined(__AVX512F__) \&\& defined(__AVX512VPOPCNTDQ__)/' glass/quant/sq1_quant.hpp
+  git reset --hard d2296ec447d2374ee8f88c6d3b85be1b1e434ad3
 
   pip install -v -e "python"
