@@ -44,6 +44,7 @@ VIBE is available under the MIT License (see [LICENSE](LICENSE)). The [pyyaml](h
 
 ### Requirements
 
+- Linux
 - [Apptainer](https://apptainer.org/docs/admin/main/installation.html#install-from-pre-built-packages) (or [Singularity](https://docs.sylabs.io/guides/4.3/user-guide/quick_start.html))
 - Python 3.6 or newer
 
@@ -55,6 +56,21 @@ sudo apt install -y apptainer
 ```
 
 Some algorithms may require that the CPU supports AVX-512 instructions and some algorithms may require an Intel CPU due to a dependency on Intel MKL. The GPU algorithms assume that an NVIDIA GPU is available.
+
+> [!IMPORTANT]
+> For accurate benchmarking, it is recommended to disable SMT/hyperthreading:
+> 
+> ```echo off | sudo tee /sys/devices/system/cpu/smt/control```
+>
+> On hybrid architectures (e.g., Intel Raptor Lake), it is recommended to disable efficiency (E) cores.
+>
+> If not running in an HPC or cloud environment, it is also recommended to set the performance governor
+>
+> ```sudo cpupower frequency-set -g performance```
+>
+> and to check that transparent huge pages are set to `madvise` or `never`:
+>
+> ```cat /sys/kernel/mm/transparent_hugepage/enabled```
 
 ### Building library images
 
