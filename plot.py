@@ -147,6 +147,7 @@ def radar_at_recall_plot(
     ncols=5,
     height=4.5,
     k=100,
+    gpu=False,
 ):
     data = data.filter(pl.col("dataset").is_in(ID_DATASETS + OOD_DATASETS))
     datasets = data["dataset"].unique().to_list()
@@ -246,8 +247,10 @@ def radar_at_recall_plot(
     )
 
     plt.tight_layout()
-    print("Writing", out_dir / f"radar-{recall}.png")
-    plt.savefig(out_dir / f"radar-{recall}.png", dpi=300)
+    gpu_suffix = "-gpu" if gpu else ""
+    filename = f"radar-{recall}{gpu_suffix}.png"
+    print("Writing", out_dir / filename)
+    plt.savefig(out_dir / filename, dpi=300)
     plt.close()
 
 
@@ -333,8 +336,10 @@ def pareto_plot(
     *,
     figsize=(10, 6),
     separate_legend: bool = True,
+    gpu=False,
 ):
     threshold_recall = 0.9
+    gpu_suffix = "-gpu" if gpu else ""
 
     plot_data = (
         data.filter(pl.col("dataset").is_in(datasets))
@@ -453,16 +458,18 @@ def pareto_plot(
                 if ax.get_legend() is not None:
                     ax.get_legend().remove()
             fig.tight_layout(pad=0.1, w_pad=1.08, h_pad=1.08)
-            print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall.png")
-            fig.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall.png", dpi=300)
+            filename = f"{'__'.join(datasets)}-qps-recall{gpu_suffix}.png"
+            print("Writing", out_dir / filename)
+            fig.savefig(out_dir / filename, dpi=300)
             plt.close(fig)
 
             plt.figure(figsize=(1.7, 2.5))
             plt.legend(handles, labels, frameon=False)
             plt.axis("off")
             plt.tight_layout()
-            print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall-legend.png")
-            plt.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall-legend.png", dpi=300)
+            filename = f"{'__'.join(datasets)}-qps-recall{gpu_suffix}-legend.png"
+            print("Writing", out_dir / filename)
+            plt.savefig(out_dir / filename, dpi=300)
             plt.close()
 
         else:
@@ -473,14 +480,16 @@ def pareto_plot(
             legend_pad = 0.20
             fig.tight_layout(rect=[0, 0, 1 - legend_pad, 1], pad=0.1, w_pad=1.08, h_pad=1.08)
             fig.legend(handles, labels, loc="center right")
-            print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall.png")
-            fig.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall.png", dpi=300)
+            filename = f"{'__'.join(datasets)}-qps-recall{gpu_suffix}.png"
+            print("Writing", out_dir / filename)
+            fig.savefig(out_dir / filename, dpi=300)
             plt.close(fig)
 
     else:
         fig.tight_layout(pad=0.1, w_pad=1.08, h_pad=1.08)
-        print("Writing", out_dir / f"{'__'.join(datasets)}-qps-recall.png")
-        fig.savefig(out_dir / f"{'__'.join(datasets)}-qps-recall.png", dpi=300)
+        filename = f"{'__'.join(datasets)}-qps-recall{gpu_suffix}.png"
+        print("Writing", out_dir / filename)
+        fig.savefig(out_dir / filename, dpi=300)
         plt.close(fig)
 
 
@@ -495,8 +504,10 @@ def split_difficulties_plot(
     k=100,
     easy_ptile=0.1,
     difficult_ptile=0.1,
+    gpu=False,
 ):
     nqueries = query_stats.group_by("dataset").len("nqueries")
+    gpu_suffix = "-gpu" if gpu else ""
 
     actual_performance_data = (
         # Pick the relevant data
@@ -601,8 +612,9 @@ def split_difficulties_plot(
 
     plt.gca().get_yaxis().set_visible(False)
     plt.tight_layout(pad=0, h_pad=1.08, w_pad=1.08)
-    print("Writing", out_dir / f"{'__'.join(datasets)}-split-performance.png")
-    plt.savefig(out_dir / f"{'__'.join(datasets)}-split-performance.png", dpi=300)
+    filename = f"split-performance-{'__'.join(datasets)}{gpu_suffix}.png"
+    print("Writing", out_dir / filename)
+    plt.savefig(out_dir / filename, dpi=300)
     plt.close()
 
 
@@ -663,15 +675,17 @@ def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
     ax.spines[:].set_visible(False)
 
     plt.tight_layout()
-    print("Writing", out_dir / f"distribution-{x}.png")
-    plt.savefig(out_dir / f"distribution-{x}.png", dpi=300)
+    filename = out_dir / f"distribution-{x}.png"
+    print("Writing", filename)
+    plt.savefig(filename, dpi=300)
     plt.close()
 
 
-def performance_gap_plot(out_dir, id_dataset, ood_dataset, summary, pca_mahalanobis_data, k=100, recall=0.9):
+def performance_gap_plot(out_dir, id_dataset, ood_dataset, summary, pca_mahalanobis_data, k=100, recall=0.9, gpu=False):
     """Plot the performance difference between in-distribution and out of distribution queries"""
     from matplotlib.gridspec import GridSpec
 
+    gpu_suffix = "-gpu" if gpu else ""
     pdata = summary.filter(pl.col("dataset").is_in([id_dataset, ood_dataset])).filter(pl.col("k") == k)
     if pdata.is_empty():
         raise ValueError("no results data found for performance gap plot")
@@ -767,8 +781,9 @@ def performance_gap_plot(out_dir, id_dataset, ood_dataset, summary, pca_mahalano
         ax_mahalanobis.spines["bottom"].set_visible(True)
 
     plt.tight_layout()
-    print("Writing", out_dir / f"performance-gap-{ood_dataset}.png")
-    plt.savefig(out_dir / f"performance-gap-{ood_dataset}.png", dpi=300)
+    filename = f"performance-gap-{ood_dataset}{gpu_suffix}.png"
+    print("Writing", out_dir / filename)
+    plt.savefig(out_dir / filename, dpi=300)
     plt.close()
 
 
@@ -882,6 +897,7 @@ def paper(out_dir, summary, detail, query_stats, pca_mahalanobis):
         ylim=(3e2, 3e5),
         figsize=(8, 3),
         separate_legend=True,
+        gpu=True,
     )
 
     split_difficulties_plot(
@@ -951,11 +967,15 @@ def holm_bonferroni(table, p_value_col):
     return table
 
 
-def latency_difference_plot(summary, detail, recall, datasets, algorithms, output, k=100, significance_level=0.05):
+def latency_difference_plot(
+    summary, detail, recall, datasets, algorithms, output, k=100, significance_level=0.05, gpu=False
+):
     try:
         import networkx
     except ImportError:
         raise ImportError("latency_difference_plot requires networkx")
+
+    gpu_suffix = "-gpu" if gpu else ""
     tests = []
     for dataset in datasets:
         df = latency_difference_table(summary, detail, algorithms, recall, dataset, k=k)
@@ -1030,8 +1050,9 @@ def latency_difference_plot(summary, detail, recall, datasets, algorithms, outpu
         plt.title(dataset)
         plt.gca().set_axis_off()
         plt.tight_layout()
-        print("Writing", pathlib.Path(output) / f"latency-critdiff-{dataset}-{recall}.png")
-        plt.savefig(pathlib.Path(output) / f"latency-critdiff-{dataset}-{recall}.png")
+        filename = f"latency-critdiff-{dataset}-{recall}{gpu_suffix}.png"
+        print("Writing", pathlib.Path(output) / filename)
+        plt.savefig(pathlib.Path(output) / filename)
 
 
 if __name__ == "__main__":
@@ -1126,6 +1147,7 @@ if __name__ == "__main__":
             xlim=xlim,
             ylim=ylim,
             separate_legend=False,
+            gpu=args.gpu,
         )
     elif args.plot_type == "radar":
         radar_at_recall_plot(
@@ -1136,6 +1158,7 @@ if __name__ == "__main__":
             height=len(algorithms) / 2,
             recall=recall,
             k=count,
+            gpu=args.gpu,
         )
     elif args.plot_type == "difficulty":
         plot_difficulty_ridgeline(out_dir, query_stats)
@@ -1151,6 +1174,7 @@ if __name__ == "__main__":
             pca_mahalanobis,
             k=count,
             recall=recall,
+            gpu=args.gpu,
         )
     elif args.plot_type == "split-difficulties":
         split_difficulties_plot(
@@ -1161,6 +1185,7 @@ if __name__ == "__main__":
             recall,
             datasets=datasets,
             k=count,
+            gpu=args.gpu,
         )
     elif args.plot_type == "critdiff":
         latency_difference_plot(
@@ -1171,6 +1196,7 @@ if __name__ == "__main__":
             output=args.output,
             algorithms=algorithms,
             k=count,
+            gpu=args.gpu,
         )
     elif args.plot_type == "paper":
         paper(out_dir, summary, detail, query_stats, pca_mahalanobis)
