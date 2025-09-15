@@ -197,10 +197,14 @@ def export_data_info(data_dir, output_file):
     stats = []
     with tqdm(total=len(hdf5_files), desc="Exporting dataset info") as pbar:
         for path in hdf5_files:
-            with h5py.File(path) as hfp:
-                name = path.name.replace(".hdf5", "")
-                n, d = hfp["train"][:].shape
-                stats.append(dict(dataset=name, n=n, dimensions=d))
+            try:
+                with h5py.File(path) as hfp:
+                    name = path.name.replace(".hdf5", "")
+                    n, d = hfp["train"][:].shape
+                    stats.append(dict(dataset=name, n=n, dimensions=d))
+            except Exception as e:
+                print(f"Invalid dataset file {path} -- skipping")
+                continue
             pbar.update(1)
 
     stats = pl.DataFrame(stats)
@@ -263,44 +267,49 @@ def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
     with tqdm(total=len(hdf5_files), desc="Exporting PCA and Mahalanobis data") as pbar:
         for path in hdf5_files:
             gen = np.random.default_rng(1234)
-            with h5py.File(path) as hfp:
-                name = path.name.replace(".hdf5", "")
-                train = hfp["train"][:]
-                test = hfp["test"][:]
 
-                if name.endswith("-binary"):
-                    train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
-                    test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
+            try:
+                with h5py.File(path) as hfp:
+                    name = path.name.replace(".hdf5", "")
+                    train = hfp["train"][:]
+                    test = hfp["test"][:]
+            except Exception:
+                print(f"Invalid dataset file {path} -- skipping")
+                continue
 
-                if train.dtype != np.float32:
-                    train = train.astype(np.float32)
-                    test = test.astype(np.float32)
+            if name.endswith("-binary"):
+                train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
+                test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
 
-                mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
-                train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
-                train = train[train_sample_indices]
+            if train.dtype != np.float32:
+                train = train.astype(np.float32)
+                test = test.astype(np.float32)
 
-                data_to_data = mahalanobis_distance_batch(train, mahalanobis_sample_train)
-                query_to_data = mahalanobis_distance_batch(test, mahalanobis_sample_train)
+            mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
+            train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
+            train = train[train_sample_indices]
 
-                mahalanobis_combined = np.concatenate((data_to_data, query_to_data))
+            data_to_data = mahalanobis_distance_batch(train, mahalanobis_sample_train)
+            query_to_data = mahalanobis_distance_batch(test, mahalanobis_sample_train)
 
-                pca = PCA(n_components=2, random_state=1)
-                scaler = StandardScaler()
+            mahalanobis_combined = np.concatenate((data_to_data, query_to_data))
 
-                combined = np.vstack([train, test])
-                combined_scaled = scaler.fit_transform(combined)
-                combined_pca = pca.fit_transform(combined_scaled)
-                df = pl.DataFrame(
-                    dict(
-                        dataset=name,
-                        part=np.concatenate((np.repeat("train", train.shape[0]), np.repeat("test", test.shape[0]))),
-                        x=combined_pca[:, 0],
-                        y=combined_pca[:, 1],
-                        mahalanobis_distance_to_data=mahalanobis_combined,
-                    )
+            pca = PCA(n_components=2, random_state=1)
+            scaler = StandardScaler()
+
+            combined = np.vstack([train, test])
+            combined_scaled = scaler.fit_transform(combined)
+            combined_pca = pca.fit_transform(combined_scaled)
+            df = pl.DataFrame(
+                dict(
+                    dataset=name,
+                    part=np.concatenate((np.repeat("train", train.shape[0]), np.repeat("test", test.shape[0]))),
+                    x=combined_pca[:, 0],
+                    y=combined_pca[:, 1],
+                    mahalanobis_distance_to_data=mahalanobis_combined,
                 )
-                pcas.append(df)
+            )
+            pcas.append(df)
 
             pbar.update(1)
 
