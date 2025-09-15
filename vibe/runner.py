@@ -1,7 +1,5 @@
 import argparse
 import json
-import logging
-import subprocess
 import os
 import time
 from typing import Tuple, List
@@ -12,7 +10,7 @@ from .definitions import Definition, instantiate_algorithm
 
 
 def run_individual_query(
-    algo: BaseANN, X_train, X_test, distance: str, count: int, run_count: int, batch: bool, gpu: bool
+    algo: BaseANN, X_train, X_test, distance: str, count: int, run_count: int, gpu: bool
 ) -> Tuple[dict, list]:
     """Run a search query using the provided algorithm and report the results.
 
@@ -23,7 +21,6 @@ def run_individual_query(
         distance (str): The type of distance metric to use.
         count (int): The number of nearest neighbors to return.
         run_count (int): The number of times to run the query.
-        batch (bool): Flag to indicate whether to run in batch mode or not.
         gpu (bool): Flag to indicate whether to run in GPU mode or not.
 
     Returns:
@@ -31,9 +28,7 @@ def run_individual_query(
     """
     from .distance import metrics
 
-    prepared_queries = (batch and hasattr(algo, "prepare_batch_query")) or (
-        (not batch) and hasattr(algo, "prepare_query")
-    )
+    prepared_queries = hasattr(algo, "prepare_query")
 
     best_search_time = float("inf")
     for i in range(run_count):
@@ -100,10 +95,6 @@ def run_individual_query(
             else:
                 batch_latencies = [total / float(len(X))] * len(X)
 
-            # make sure all returned indices are unique
-            # for res in results:
-            #     assert len(res) == len(set(res)), "Implementation returned duplicated candidates"
-
             candidates = [
                 [
                     (int(idx), float(dist))
@@ -113,7 +104,7 @@ def run_individual_query(
             ]
             return [(latency, v) for latency, v in zip(batch_latencies, candidates)]
 
-        if batch or gpu:
+        if gpu:
             results = batch_query(X_test)
         else:
             results = [single_query(x) for x in X_test]
@@ -126,7 +117,6 @@ def run_individual_query(
 
     verbose = hasattr(algo, "query_verbose")
     attrs = {
-        "batch_mode": batch,
         "gpu_mode": gpu,
         "best_search_time": best_search_time,
         "candidates": avg_candidates,
@@ -246,7 +236,7 @@ def build_index(algo: BaseANN, constructor_name, X_train, X_learn, X_learn_neigh
     return build_time, index_size
 
 
-def run(definition: Definition, dataset_name: str, count: int, run_count: int, batch: bool) -> None:
+def run(definition: Definition, dataset_name: str, count: int, run_count: int) -> None:
     """Run the algorithm benchmarking.
 
     Args:
@@ -254,7 +244,6 @@ def run(definition: Definition, dataset_name: str, count: int, run_count: int, b
         dataset_name (str): The name of the dataset.
         count (int): The number of results to return.
         run_count (int): The number of runs.
-        batch (bool): If true, runs in batch mode.
     """
     from .results import store_results
 
@@ -284,7 +273,7 @@ function"""
                 algo.set_query_arguments(*query_arguments)
 
             descriptor, results = run_individual_query(
-                algo, X_train, X_test, distance, count, run_count, batch, definition.gpu
+                algo, X_train, X_test, distance, count, run_count, definition.gpu
             )
 
             descriptor.update(
@@ -296,7 +285,7 @@ function"""
                 }
             )
 
-            store_results(dataset_name, count, definition, query_arguments, descriptor, results, batch, definition.gpu)
+            store_results(dataset_name, count, definition, query_arguments, descriptor, results, definition.gpu)
     finally:
         pass
 
@@ -332,11 +321,6 @@ def run_from_cmdline():
         type=int,
     )
     parser.add_argument(
-        "--batch",
-        help='If included, the algorithm will be run in batch mode, rather than "individual query" mode.',
-        action="store_true",
-    )
-    parser.add_argument(
         "--gpu",
         help="If included, the algorithm will be run in GPU mode.",
         action="store_true",
@@ -365,67 +349,4 @@ def run_from_cmdline():
         ood=args.ood,
         gpu=args.gpu,
     )
-    run(definition, args.dataset, args.count, args.runs, args.batch)
-
-
-def run_singularity(
-    definition: Definition,
-    dataset: str,
-    count: int,
-    runs: int,
-    timeout: int,
-    batch: bool,
-) -> None:
-    """Runs `run_from_cmdline` within a Singularity container with specified parameters and logs the output.
-
-    See `run_from_cmdline` for details on the args.
-    """
-    image = "images/" + definition.singularity_image + ".sif"
-
-    cmd = []
-    if timeout is not None:
-        cmd += ["timeout", str(timeout)]
-    cmd += ["singularity", "exec"]
-    if definition.gpu:
-        cmd += ["--nv"]
-    cmd += [
-        image,
-        "python3",
-        "-u",
-        "run_algorithm.py",
-        "--dataset",
-        dataset,
-        "--algorithm",
-        definition.algorithm,
-        "--module",
-        definition.module,
-        "--constructor",
-        definition.constructor,
-        "--runs",
-        str(runs),
-        "--count",
-        str(count),
-    ]
-    if definition.gpu:
-        cmd += ["--gpu"]
-    if batch:
-        cmd += ["--batch"]
-    if definition.ood:
-        cmd += ["--ood"]
-    cmd.append(json.dumps(definition.arguments))
-    cmd += [json.dumps(qag) for qag in definition.query_argument_groups]
-
-    with subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, bufsize=1
-    ) as process:
-        logger = logging.getLogger(f"vibe.{process.pid}")
-        logger.info(f"Started process with PID: {process.pid}")
-
-        for line in process.stdout:
-            logger.info(line.rstrip())
-
-        return_code = process.wait()
-        logger.info(f"Process completed with return code: {return_code}")
-
-        for line in process.stderr:
-            logger.error(line.rstrip())
+    run(definition, args.dataset, args.count, args.runs)

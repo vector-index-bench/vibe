@@ -1,26 +1,16 @@
 import argparse
 import logging
 import logging.config
-import multiprocessing.pool
 import os
 import glob
 import random
 import sys
-from queue import Empty
 from typing import List
 
 from .definitions import Definition, InstantiationStatus, algorithm_status, get_definitions, list_algorithms
-from .runner import run, run_singularity
 from .results import is_run
 from .util import download, replace
-
-try:
-    from . import numa
-
-    HAS_NUMA = numa.available()
-except:
-    HAS_NUMA = False
-
+from .workers import create_workers_and_execute
 
 logging.config.fileConfig("logging.conf")
 logger = logging.getLogger("vibe")
@@ -47,274 +37,6 @@ def positive_int(input_str: str) -> int:
         raise argparse.ArgumentTypeError(f"{input_str} is not a positive integer")
 
     return i
-
-
-def get_numa_node_for_cpu(cpu: int) -> int:
-    """
-    Find which NUMA node a CPU belongs to.
-
-    Args:
-        cpu (int): CPU core number
-
-    Returns:
-        int: NUMA node number
-    """
-    if not numa.available():
-        return 0
-
-    max_node = numa.get_max_node()
-    for node in range(max_node + 1):
-        cpus_on_node = numa.node_to_cpus(node)
-        if cpu in cpus_on_node:
-            return node
-
-    return 0
-
-
-def bind_process(cpu: int) -> None:
-    """
-    Binds the process to the specified CPU and its local NUMA node memory.
-
-    Args:
-        cpu (int): CPU core number to bind to
-    """
-    os.sched_setaffinity(0, {cpu})
-
-    if HAS_NUMA:
-        node = get_numa_node_for_cpu(cpu)
-
-        logger.info(f"Worker on CPU {cpu}: binding memory and execution to NUMA node {node}")
-        numa.set_membind({node})
-        numa.set_run_on_node_mask({node})
-
-
-def run_worker(cpu: int, args: argparse.Namespace, queue: multiprocessing.Queue) -> None:
-    """
-    Executes the algorithm based on the provided parameters.
-
-    Args:
-        cpu (int): The CPU number to be used in the execution.
-        args (argparse.Namespace): User provided arguments for running workers.
-        queue (multiprocessing.Queue): The multiprocessing queue that contains the algorithm definitions.
-
-    Returns:
-        None
-    """
-    if args.parallelism > 1:
-        bind_process(cpu)
-
-    while True:
-        try:
-            definition = queue.get(timeout=1)
-            if definition is None:
-                break
-
-            try:
-                if args.local:
-                    run(definition, args.dataset, args.count, args.runs, args.batch)
-                else:
-                    run_singularity(definition, args.dataset, args.count, args.runs, args.timeout, args.batch)
-            except Exception as e:
-                print(f"Task execution error: {e}")
-            finally:
-                queue.task_done()
-        except Empty:
-            continue
-        except Exception as e:
-            print(f"Worker queue error: {e}")
-            break
-
-
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        "--dataset",
-        metavar="NAME",
-        help="the dataset to load training points from",
-    )
-    parser.add_argument(
-        "-k", "--count", default=100, type=positive_int, help="the number of near neighbours to search for"
-    )
-    parser.add_argument(
-        "--definitions",
-        metavar="FOLDER",
-        help="base directory of algorithms. Algorithm definitions expected at 'FOLDER/*/config.yml'",
-        default="vibe/algorithms",
-    )
-    parser.add_argument("--algorithm", metavar="NAME", help="run only the named algorithm", default=None)
-    parser.add_argument("--module", metavar="NAME", help="run only algorithms in the named module", default=None)
-    parser.add_argument(
-        "--list-algorithms", help="print the names of all known algorithms and exit", action="store_true"
-    )
-    parser.add_argument("--force", help="re-run algorithms even if their results already exist", action="store_true")
-    parser.add_argument(
-        "--runs",
-        metavar="COUNT",
-        type=positive_int,
-        help="run each algorithm instance %(metavar)s times and use only the best result",
-        default=5,
-    )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        help="Timeout (in seconds) for each individual algorithm run, or -1 if no timeout should be set",
-        default=4 * 3600,
-    )
-    parser.add_argument(
-        "--local",
-        action="store_true",
-        help="If set, then will run everything locally (inside the same process) rather than using Singularity",
-    )
-    parser.add_argument("--batch", action="store_true", help="If set, algorithms get all queries at once")
-    parser.add_argument("--gpu", action="store_true", help="If set, run the benchmark in GPU mode")
-    parser.add_argument(
-        "--max-n-algorithms", type=int, help="Max number of algorithms to run (just used for testing)", default=-1
-    )
-    parser.add_argument("--run-disabled", help="run algorithms that are disabled in algos.yml", action="store_true")
-    parser.add_argument(
-        "--parallelism", type=positive_int, help="Number of indexes to benchmark in parallel", default=1
-    )
-
-    args = parser.parse_args()
-
-    if args.timeout == -1:
-        args.timeout = None
-
-    if args.gpu:
-        args.parallelism = 1
-
-    if args.gpu and args.batch:
-        raise Exception("GPU mode and batch mode cannot be enabled at the same time")
-
-    return args
-
-
-def filter_already_run_definitions(
-    definitions: List[Definition], dataset: str, count: int, batch: bool, gpu: bool, force: bool
-) -> List[Definition]:
-    """Filters out the algorithm definitions based on whether they have already been run or not.
-
-    This function checks if there are existing results for each definition by constructing the
-    result filename from the algorithm definition and the provided arguments. If there are no
-    existing results or if the parameter `force=True`, the definition is kept. Otherwise, it is
-    discarded.
-
-    Args:
-        definitions (List[Definition]): A list of algorithm definitions to be filtered.
-        dataset (str): The name of the dataset to load training points from.
-        count (int): The number of near neighbours to search for (only used in file naming convention).
-        batch (bool): If set, algorithms get all queries at once (only used in file naming convention).
-        gpu (bool): If set, run the benchmark in GPU mode (only used in file naming convention).
-        force (bool): If set, re-run algorithms even if their results already exist.
-
-    Returns:
-        List[Definition]: A list of algorithm definitions that either have not been run or are
-                          forced to be re-run.
-    """
-    filtered_definitions = []
-
-    for definition in definitions:
-        not_yet_run = [
-            query_args
-            for query_args in (definition.query_argument_groups or [[]])
-            if force or not is_run(dataset, count, definition, query_args, batch, gpu)
-        ]
-
-        if not_yet_run:
-            definition = (
-                replace(definition, query_argument_groups=not_yet_run)
-                if definition.query_argument_groups
-                else definition
-            )
-            filtered_definitions.append(definition)
-
-    return filtered_definitions
-
-
-def check_module_import_and_constructor(df: Definition) -> bool:
-    """
-    Verifies if the algorithm module can be imported and its constructor exists.
-
-    This function checks if the module specified in the definition can be imported.
-    Additionally, it verifies if the constructor for the algorithm exists within the
-    imported module.
-
-    Args:
-        df (Definition): A definition object containing the module and constructor
-        for the algorithm.
-
-    Returns:
-        bool: True if the module can be imported and the constructor exists, False
-        otherwise.
-    """
-    status = algorithm_status(df)
-    if status == InstantiationStatus.NO_CONSTRUCTOR:
-        raise Exception(
-            f"{df.module}.{df.constructor}({df.arguments}): error: the module '{df.module}' does not expose the named constructor"
-        )
-    if status == InstantiationStatus.NO_MODULE:
-        logging.warning(
-            f"{df.module}.{df.constructor}({df.arguments}): the module '{df.module}' could not be loaded; skipping"
-        )
-        return False
-
-    return True
-
-
-def create_workers_and_execute(definitions: List[Definition], args: argparse.Namespace):
-    """
-    Manages the creation, execution, and termination of worker processes based on provided arguments.
-
-    Args:
-        definitions (List[Definition]): List of algorithm definitions to be processed.
-        args (argparse.Namespace): User provided arguments for running workers.
-
-    Raises:
-        Exception: If the level of parallelism exceeds the available CPU count or if batch mode is on with more than
-                   one worker.
-    """
-    cpu_count = int(os.environ.get("SLURM_CPUS_PER_TASK", -1))
-    if cpu_count == -1:
-        cpu_count = multiprocessing.cpu_count()
-    cpu_count -= 1
-
-    if args.parallelism > cpu_count:
-        raise Exception(f"Parallelism larger than {cpu_count}! (CPU count minus one)")
-
-    if args.batch and args.parallelism > 1:
-        raise Exception(
-            f"Batch mode uses all available CPU resources, --parallelism should be set to 1. (Was: {args.parallelism})"
-        )
-
-    task_queue = multiprocessing.JoinableQueue()
-
-    for definition in definitions:
-        task_queue.put(definition)
-
-    pid = os.getpid()
-    cpu_affinity = sorted(list(os.sched_getaffinity(pid)))
-
-    core = cpu_affinity[0]
-    remaining_cores = cpu_affinity[1:]
-
-    if args.parallelism > 1:
-        bind_process(core)
-
-    workers = []
-    num_workers = min([args.parallelism, len(remaining_cores), len(definitions)])
-    for core in remaining_cores[:num_workers]:
-        p = multiprocessing.Process(target=run_worker, args=(core, args, task_queue))
-        p.daemon = True
-        workers.append(p)
-        p.start()
-
-    task_queue.join()
-
-    for _ in range(num_workers):
-        task_queue.put(None)
-
-    for w in workers:
-        w.join()
 
 
 def filter_disabled_algorithms(definitions: List[Definition]) -> List[Definition]:
@@ -419,6 +141,137 @@ def parse_dataset_string(s):
     return dimension, distance, point_type
 
 
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--dataset",
+        metavar="NAME",
+        help="the dataset to load training points from",
+    )
+    parser.add_argument(
+        "-k", "--count", default=100, type=positive_int, help="the number of near neighbours to search for"
+    )
+    parser.add_argument(
+        "--definitions",
+        metavar="FOLDER",
+        help="base directory of algorithms. Algorithm definitions expected at 'FOLDER/*/config.yml'",
+        default="vibe/algorithms",
+    )
+    parser.add_argument("--algorithm", metavar="NAME", help="run only the named algorithm", default=None)
+    parser.add_argument("--module", metavar="NAME", help="run only algorithms in the named module", default=None)
+    parser.add_argument(
+        "--list-algorithms", help="print the names of all known algorithms and exit", action="store_true"
+    )
+    parser.add_argument("--force", help="re-run algorithms even if their results already exist", action="store_true")
+    parser.add_argument(
+        "--runs",
+        metavar="COUNT",
+        type=positive_int,
+        help="run each algorithm instance %(metavar)s times and use only the best result",
+        default=5,
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        help="Timeout (in seconds) for each individual algorithm run, or -1 if no timeout should be set",
+        default=4 * 3600,
+    )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="If set, then will run everything locally (inside the same process) rather than using Singularity",
+    )
+    parser.add_argument("--gpu", action="store_true", help="If set, run the benchmark in GPU mode")
+    parser.add_argument(
+        "--max-n-algorithms", type=int, help="Max number of algorithms to run (just used for testing)", default=-1
+    )
+    parser.add_argument("--run-disabled", help="run algorithms that are disabled in algos.yml", action="store_true")
+    parser.add_argument(
+        "--parallelism", type=positive_int, help="Number of indexes to benchmark in parallel", default=1
+    )
+
+    args = parser.parse_args()
+
+    if args.timeout == -1:
+        args.timeout = None
+
+    if args.gpu:
+        args.parallelism = 1
+
+    return args
+
+
+def filter_already_run_definitions(
+    definitions: List[Definition], dataset: str, count: int, gpu: bool, force: bool
+) -> List[Definition]:
+    """Filters out the algorithm definitions based on whether they have already been run or not.
+
+    This function checks if there are existing results for each definition by constructing the
+    result filename from the algorithm definition and the provided arguments. If there are no
+    existing results or if the parameter `force=True`, the definition is kept. Otherwise, it is
+    discarded.
+
+    Args:
+        definitions (List[Definition]): A list of algorithm definitions to be filtered.
+        dataset (str): The name of the dataset to load training points from.
+        count (int): The number of near neighbours to search for (only used in file naming convention).
+        gpu (bool): If set, run the benchmark in GPU mode (only used in file naming convention).
+        force (bool): If set, re-run algorithms even if their results already exist.
+
+    Returns:
+        List[Definition]: A list of algorithm definitions that either have not been run or are
+                          forced to be re-run.
+    """
+    filtered_definitions = []
+
+    for definition in definitions:
+        not_yet_run = [
+            query_args
+            for query_args in (definition.query_argument_groups or [[]])
+            if force or not is_run(dataset, count, definition, query_args, gpu)
+        ]
+
+        if not_yet_run:
+            definition = (
+                replace(definition, query_argument_groups=not_yet_run)
+                if definition.query_argument_groups
+                else definition
+            )
+            filtered_definitions.append(definition)
+
+    return filtered_definitions
+
+
+def check_module_import_and_constructor(df: Definition) -> bool:
+    """
+    Verifies if the algorithm module can be imported and its constructor exists.
+
+    This function checks if the module specified in the definition can be imported.
+    Additionally, it verifies if the constructor for the algorithm exists within the
+    imported module.
+
+    Args:
+        df (Definition): A definition object containing the module and constructor
+        for the algorithm.
+
+    Returns:
+        bool: True if the module can be imported and the constructor exists, False
+        otherwise.
+    """
+    status = algorithm_status(df)
+    if status == InstantiationStatus.NO_CONSTRUCTOR:
+        raise Exception(
+            f"{df.module}.{df.constructor}({df.arguments}): error: the module '{df.module}' does not expose the named constructor"
+        )
+    if status == InstantiationStatus.NO_MODULE:
+        logging.warning(
+            f"{df.module}.{df.constructor}({df.arguments}): the module '{df.module}' could not be loaded; skipping"
+        )
+        return False
+
+    return True
+
+
 def main():
     args = parse_arguments()
 
@@ -436,7 +289,7 @@ def main():
         dataset_url = f"https://huggingface.co/datasets/vector-index-bench/vibe/resolve/main/{args.dataset}.hdf5"
         hdf5_filename = os.path.join("data", f"{args.dataset}.hdf5")
         download(dataset_url, hdf5_filename)
-    except:
+    except Exception:
         raise Exception(
             f"""Cannot download {args.dataset}. Make sure you have entered a valid dataset name.
            You can also try creating the dataset manually using create_dataset.sh"""
@@ -455,7 +308,6 @@ def main():
         definitions,
         dataset=args.dataset,
         count=args.count,
-        batch=args.batch,
         gpu=args.gpu,
         force=args.force,
     )

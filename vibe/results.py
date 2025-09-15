@@ -12,12 +12,9 @@ def is_run(
     count: Optional[int] = None,
     definition: Optional[Definition] = None,
     query_arguments: Optional[Any] = None,
-    batch_mode: bool = False,
     gpu_mode: bool = False,
 ) -> bool:
-    file_path, search_parameters = build_result_filepath(
-        dataset_name, count, definition, query_arguments, batch_mode, gpu_mode
-    )
+    file_path, search_parameters = build_result_filepath(dataset_name, count, definition, query_arguments, gpu_mode)
     return os.path.exists(file_path)
 
 
@@ -26,7 +23,6 @@ def build_result_filepath(
     count: int,
     definition: Optional[Definition] = None,
     query_arguments: Optional[Any] = None,
-    batch_mode: bool = False,
     gpu_mode: bool = False,
 ) -> Tuple[str, Optional[str]]:
     """
@@ -37,7 +33,6 @@ def build_result_filepath(
         count (int): The count of records.
         definition (Definition, optional): The definition of the algorithm.
         query_arguments (Any, optional): Additional arguments for the query.
-        batch_mode (bool, optional): If true, the batch mode is activated.
         gpu_mode (bool, optional): If true, the GPU mode is activated.
 
     Returns:
@@ -48,8 +43,6 @@ def build_result_filepath(
     suffix = ""
     if gpu_mode:
         suffix = "-gpu"
-    elif batch_mode:
-        suffix = "-batch"
 
     d = ["results", dataset_name, str(count)]
     search_parameters = None
@@ -61,9 +54,7 @@ def build_result_filepath(
     return os.path.join(*d), search_parameters
 
 
-def store_results(
-    dataset_name: str, count: int, definition: Definition, query_arguments: Any, attrs, results, batch, gpu
-):
+def store_results(dataset_name: str, count: int, definition: Definition, query_arguments: Any, attrs, results, gpu):
     """
     Stores results for an algorithm (and hyperparameters) running against a dataset in a HDF5 file.
 
@@ -74,12 +65,11 @@ def store_results(
         query_arguments (Any): Additional arguments for the query.
         attrs (dict): Attributes to be stored in the file.
         results (list): Results to be stored.
-        batch (bool): If True, the batch mode is activated.
         gpu (bool): If true, the GPU mode is activated.
     """
     import h5py
 
-    filename, search_parameters = build_result_filepath(dataset_name, count, definition, query_arguments, batch, gpu)
+    filename, search_parameters = build_result_filepath(dataset_name, count, definition, query_arguments, gpu)
     directory, _ = os.path.split(filename)
 
     if not os.path.isdir(directory):
@@ -102,14 +92,13 @@ def store_results(
             distances[i] = [d for n, d in ds] + [float("inf")] * (count - len(ds))
 
 
-def load_all_results(dataset: str, count: int, batch_mode: bool = False, gpu_mode: bool = False):
+def load_all_results(dataset: str, count: int, gpu_mode: bool = False):
     """
     Loads all the results from the HDF5 files in the specified path.
 
     Args:
         dataset (str): The name of the dataset.
         count (int): The count of records.
-        batch_mode (bool, optional): If True, the batch mode is activated.
         gpu_mode (bool, optional): If True, the GPU mode is activated.
 
     Yields:
@@ -128,8 +117,6 @@ def load_all_results(dataset: str, count: int, batch_mode: bool = False, gpu_mod
                         g = f[group]
                         properties = dict(g.attrs)
                         if "gpu_mode" in properties and gpu_mode != properties["gpu_mode"]:
-                            continue
-                        if "batch_mode" in properties and batch_mode != properties["batch_mode"]:
                             continue
                         yield properties, g
             except Exception:
