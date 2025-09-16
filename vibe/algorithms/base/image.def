@@ -17,6 +17,8 @@ From: ubuntu:24.04
   eval "$(micromamba shell hook -s posix)"
   micromamba activate
 
+  micromamba config set use_lockfiles false
+
   micromamba install -y -q -f /environment.yml
   micromamba clean --all --yes
 
