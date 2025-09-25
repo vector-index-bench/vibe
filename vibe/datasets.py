@@ -1241,4 +1241,8 @@ DATASETS: Dict[str, Callable[[str], None]] = {
     "yahoo-minilm-384-normalized": lambda out_fn: yahoo_answers(out_fn, minilm_embed()),
     "yandex-200-cosine": lambda out_fn: yandex(out_fn, "cosine"),
     "yi-128-ip": lambda out_fn: yi(out_fn, 31, 13),
+    "laion-clip-id-512-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "laion-clip-512-normalized"),
+    "yandex-id-200-cosine": lambda out_fn: ood_to_id_dataset(out_fn, "yandex-200-cosine"),
+    "imagenet-align-id-640-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "imagenet-align-640-normalized"),
+    "coco-nomic-id-768-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "coco-nomic-768-normalized"),
 }
