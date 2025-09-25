@@ -144,12 +144,15 @@ def radar_at_recall_plot(
     query_stats,
     recall,
     algorithms,
+    all_algorithms,
     ncols=5,
     height=4.5,
     k=100,
     gpu=False,
 ):
-    data = data.filter(pl.col("dataset").is_in(ID_DATASETS + OOD_DATASETS))
+    data = data.filter(pl.col("dataset").is_in(ID_DATASETS + OOD_DATASETS)).filter(
+        pl.col("algorithm").is_in(all_algorithms)
+    )
     datasets = data["dataset"].unique().to_list()
     expected_combinations = pl.DataFrame({"dataset": datasets}).join(
         pl.DataFrame({"algorithm": algorithms}), how="cross"
@@ -254,55 +257,26 @@ def radar_at_recall_plot(
     plt.close()
 
 
-def compute_pareto(data, by=["algorithm", "dataset", "k"]):
-    data = data.with_columns(
-        pl.col("qps").over(partition_by=by, order_by="qps").rank("ordinal", descending=True).alias("rank_qps"),
-        pl.col("recall").over(partition_by=by, order_by="recall").rank("ordinal", descending=True).alias("rank_recall"),
-    )
+def compute_pareto(data, by=("algorithm", "dataset", "k"), id_col="params"):
+    df = data
+
+    if id_col not in df.columns:
+        df = df.with_row_count("row_id")
+        id_col = "row_id"
 
     dominated = (
-        data.join(data, on=by, how="inner")
+        df.join(df, on=list(by), how="inner", suffix="_r")
         .filter(
-            ((pl.col("rank_qps") > pl.col("rank_qps_right")) & (pl.col("rank_recall") >= pl.col("rank_recall_right")))
-            | ((pl.col("rank_qps") >= pl.col("rank_qps_right")) & (pl.col("rank_recall") > pl.col("rank_recall_right")))
+            (pl.col("qps") <= pl.col("qps_r"))
+            & (pl.col("recall") <= pl.col("recall_r"))
+            & ((pl.col("qps") < pl.col("qps_r")) | (pl.col("recall") < pl.col("recall_r")))
         )
-        .select(pl.exclude("^*_right$"))
+        .select([*by, id_col])
+        .unique()
     )
 
-    pareto = data.join(dominated, on=by + ["params"], how="anti")
+    pareto = df.join(dominated, on=[*by, id_col], how="anti")
     return pareto
-
-
-def compute_pareto_direct(data, by=["algorithm", "dataset", "k"]):
-    data_ranked = data.with_row_index("row_nr").with_columns(
-        pl.col("qps").rank("ordinal", descending=True).over(by).alias("rank_qps"),
-        pl.col("recall").rank("ordinal", descending=True).over(by).alias("rank_recall"),
-    )
-
-    right_data = data_ranked.select(by + ["row_nr", "rank_qps", "rank_recall"])
-
-    comparison_join = data_ranked.join(right_data, on=by, how="inner", suffix="_right")
-
-    is_dominated_flag = comparison_join.filter(
-        pl.col("row_nr") != pl.col("row_nr_right")  # Don't compare a point to itself
-    ).with_columns(
-        is_dominated_by_right=(
-            ((pl.col("rank_qps") > pl.col("rank_qps_right")) & (pl.col("rank_recall") >= pl.col("rank_recall_right")))
-            | ((pl.col("rank_qps") >= pl.col("rank_qps_right")) & (pl.col("rank_recall") > pl.col("rank_recall_right")))
-        )
-    )
-
-    dominance_summary = is_dominated_flag.group_by("row_nr").agg(
-        pl.col("is_dominated_by_right").any().alias("is_dominated")
-    )
-
-    pareto_data = (
-        data_ranked.join(dominance_summary, on="row_nr", how="left")
-        .filter(pl.col("is_dominated").fill_null(False).not_())
-        .select(pl.exclude(["row_nr", "rank_qps", "rank_recall", "is_dominated"]))
-    )
-
-    return pareto_data
 
 
 def adjust_text(texts, height):
@@ -338,8 +312,17 @@ def pareto_plot(
     separate_legend: bool = True,
     gpu=False,
 ):
-    threshold_recall = 0.9
+    def flatten_if_needed(data):
+        if data and isinstance(data[0], list):
+            return [item for sublist in data for item in sublist]
+        else:
+            return data
+
+    threshold_recall = 0.90
     gpu_suffix = "-gpu" if gpu else ""
+
+    original_algorithms = algorithms
+    algorithms = flatten_if_needed(algorithms)
 
     plot_data = (
         data.filter(pl.col("dataset").is_in(datasets))
@@ -347,13 +330,13 @@ def pareto_plot(
         .filter(pl.col("k") == k)
     )
 
-    pareto_data = compute_pareto_direct(plot_data)
+    pareto_data = compute_pareto(plot_data)
 
     qps_over_threshold = (
         pareto_data.filter(pl.col("recall") >= threshold_recall)
         .group_by("algorithm")
-        .agg(pl.col("qps").max().alias("best_qps_over_70"))
-        .sort("best_qps_over_70", descending=True)
+        .agg(pl.col("qps").max().alias("best_qps_over_thresh"))
+        .sort("best_qps_over_thresh", descending=True)
     )
     legend_order = qps_over_threshold["algorithm"].to_list()
     legend_order.extend([a for a in algorithms if a not in legend_order])
@@ -367,7 +350,7 @@ def pareto_plot(
     algorithm_dashes = dict(zip(algorithms, sns._base.unique_dashes(len(algorithms))))
     algorithm_markers = dict(zip(algorithms, sns._base.unique_markers(len(algorithms))))
 
-    joint_legend = isinstance(algorithms[0], str)
+    joint_legend = isinstance(original_algorithms[0], str)
 
     def plot_lines(pdata, background=False, ax=None):
         if ax is None:
@@ -402,14 +385,17 @@ def pareto_plot(
     if joint_legend:
         algorithms = [legend_order] * len(datasets)
 
-    for dataset, ax, algos in zip(datasets, axs, algorithms):
+    for dataset, ax, algos in zip(datasets, axs, original_algorithms):
         facet = pareto_data.filter(pl.col("dataset") == dataset)
+        if isinstance(algos, list):
+            facet = facet.filter(pl.col("algorithm").is_in(algos))
 
         if facet.is_empty():
             raise ValueError(f"no results data for dataset {dataset}")
 
         plot_lines(facet, ax=ax)
         ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
         ax.semilogy()
 
         title = "-".join(dataset.split("-")[:-2])
@@ -486,6 +472,13 @@ def pareto_plot(
             plt.close(fig)
 
     else:
+        for ax in axs:
+            if ax.get_legend() is not None:
+                handles, labels = ax.get_legend_handles_labels()
+                sorted_pairs = sorted(zip(handles, labels), key=lambda hl: rank.get(hl[1], float("inf")))
+                handles, labels = zip(*sorted_pairs)
+                ax.legend(handles, labels)
+
         fig.tight_layout(pad=0.1, w_pad=1.08, h_pad=1.08)
         filename = f"{'__'.join(datasets)}-qps-recall{gpu_suffix}.png"
         print("Writing", out_dir / filename)
@@ -787,70 +780,89 @@ def performance_gap_plot(out_dir, id_dataset, ood_dataset, summary, pca_mahalano
     plt.close()
 
 
-def paper(out_dir, summary, detail, query_stats, pca_mahalanobis):
+def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis):
+    selected = [
+        "glass",
+        "hnswlib",
+        "ivfpqfs(faiss)",
+        "lorann",
+        "ngt-onng",
+        "ngt-qg",
+        "pynndescent",
+        "scann",
+        "symphonyqg",
+    ]
+
     plot_difficulty_ridgeline(out_dir, query_stats)
 
     radar_at_recall_plot(
         out_dir,
         summary,
         query_stats,
-        algorithms=[
-            "lorann",
-            "symphonyqg",
-            "glass",
-            "ngt-qg",
-            "ngt-onng",
-            "scann",
-            "hnswlib",
-            "ivfpqfs(faiss)",
-            "vamana-lvq(svs)",
-        ],
+        algorithms=selected,
+        all_algorithms=all_algorithms,
         recall=0.95,
     )
 
-    pareto_plot(
-        out_dir,
-        summary,
-        pca_mahalanobis=None,
-        datasets=["agnews-mxbai-1024-euclidean", "landmark-nomic-768-normalized"],
-        algorithms=[
-            "lorann",
-            "symphonyqg",
-            "glass",
-            "ngt-qg",
-            "scann",
-            "ngt-onng",
-            "hnswlib",
-            "ivfpqfs(faiss)",
-            "pynndescent",
-        ],
-        xlim=(0.7, 1.0),
-        ylim=(2e2, 1.1e4),
-        figsize=(8, 3),
-        separate_legend=True,
-    )
+    for dataset in ["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"]:
+        pareto_plot(
+            out_dir,
+            summary,
+            pca_mahalanobis=None,
+            datasets=[dataset],
+            algorithms=all_algorithms,
+            xlim=(0.7, 1.0),
+            ylim=(1e1, 1.1e4),
+            separate_legend=False,
+            gpu=False,
+        )
 
-    pareto_plot(
-        out_dir,
-        summary,
-        pca_mahalanobis=None,
-        datasets=["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"],
-        algorithms=[
-            "lorann",
-            "symphonyqg",
-            "glass",
-            "ngt-qg",
-            "scann",
-            "ngt-onng",
-            "hnswlib",
-            "ivfpqfs(faiss)",
-            "pynndescent",
-        ],
-        xlim=(0.7, 1.0),
-        ylim=(5e2, 1.1e4),
-        figsize=(8, 3),
-        separate_legend=True,
-    )
+    for datasets in [
+        ["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"],
+        ["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"],
+        ["ccnews-nomic-768-normalized", "celeba-resnet-2048-cosine"],
+        ["codesearchnet-jina-768-cosine", "glove-200-cosine"],
+        ["gooaq-distilroberta-768-normalized", "imagenet-clip-512-normalized"],
+        ["landmark-dino-768-cosine", "landmark-nomic-768-normalized"],
+        ["simplewiki-openai-3072-normalized", "yahoo-minilm-384-normalized"],
+    ]:
+        pareto_plot(
+            out_dir,
+            summary,
+            pca_mahalanobis=None,
+            datasets=datasets,
+            algorithms=selected,
+            xlim=(0.7, 1.0),
+            ylim=(1e2, 1.1e4),
+            figsize=(8, 3),
+            separate_legend=True,
+        )
+
+    for datasets in [
+        ["coco-nomic-768-normalized", "imagenet-align-640-normalized"],
+        ["laion-clip-512-normalized", "yandex-200-cosine"],
+    ]:
+        pareto_plot(
+            out_dir,
+            summary,
+            pca_mahalanobis=pca_mahalanobis,
+            datasets=datasets,
+            algorithms=[
+                "glass",
+                "hnswlib",
+                "ivfpqfs(faiss)",
+                "lorann",
+                "mlann-rf",
+                "ngt-qg",
+                "roargraph",
+                "scann",
+                "symphonyqg",
+            ],
+            xlim=(0.5, 1),
+            ylim=(1e2, 1.1e4),
+            figsize=(8, 3),
+            separate_legend=True,
+        )
 
     pareto_plot(
         out_dir,
@@ -858,46 +870,20 @@ def paper(out_dir, summary, detail, query_stats, pca_mahalanobis):
         pca_mahalanobis=pca_mahalanobis,
         datasets=["yi-128-ip", "llama-128-ip"],
         algorithms=[
-            "roargraph",
-            "mlann-rf",
-            "lorann",
-            "ivf(faiss)",
-            "scann",
-            "ivfpqfs(faiss)",
-            "hnswlib",
             "glass",
+            "hnswlib",
+            "ivf(faiss)",
+            "ivfpqfs(faiss)",
+            "lorann",
+            "mlann-rf",
             "ngt-onng",
+            "roargraph",
+            "scann",
         ],
         xlim=(0, 1),
+        ylim=(1e2, 3e4),
         figsize=(8, 3),
         separate_legend=True,
-    )
-
-    pareto_plot(
-        out_dir,
-        summary,
-        pca_mahalanobis=pca_mahalanobis,
-        datasets=["yandex-200-cosine", "laion-clip-512-normalized"],
-        algorithms=["roargraph", "lorann", "symphonyqg", "scann", "ngt-qg", "hnswlib", "glass"],
-        xlim=(0.5, 1),
-        figsize=(8, 3),
-        separate_legend=True,
-    )
-
-    pareto_plot(
-        out_dir,
-        summary,
-        pca_mahalanobis=None,
-        datasets=["agnews-mxbai-1024-hamming-binary", "agnews-mxbai-1024-euclidean"],
-        algorithms=[
-            ["ngt-onng", "ivf(faiss)", "pynndescent", "hnsw(faiss)"],
-            ["cuvs-cagra", "cuvs-ivfpq", "faiss-gpu-ivf", "cuvs-ivf", "ggnn"],
-        ],
-        xlim=(0.7, 1),
-        ylim=(3e2, 3e5),
-        figsize=(8, 3),
-        separate_legend=True,
-        gpu=True,
     )
 
     split_difficulties_plot(
@@ -907,6 +893,55 @@ def paper(out_dir, summary, detail, query_stats, pca_mahalanobis):
         query_stats,
         0.90,
         datasets=["arxiv-nomic-768-normalized", "landmark-nomic-768-normalized"],
+    )
+
+    for datasets in [
+        ["agnews-mxbai-1024-hamming-binary", "agnews-mxbai-1024-euclidean"],
+        ["ccnews-nomic-768-hamming-binary", "ccnews-nomic-768-normalized"],
+        ["landmark-nomic-768-hamming-binary", "landmark-nomic-768-normalized"],
+        ["simplewiki-openai-3072-hamming-binary", "simplewiki-openai-3072-normalized"],
+    ]:
+        pareto_plot(
+            out_dir,
+            summary,
+            pca_mahalanobis=None,
+            datasets=datasets,
+            algorithms=[
+                ["ngt-onng", "ivf(faiss)", "pynndescent", "hnsw(faiss)"],
+                ["cuvs-cagra", "cuvs-ivfpq", "faiss-gpu-ivf", "cuvs-ivf", "ggnn"],
+            ],
+            xlim=(0.7, 1),
+            ylim=(3e2, 3e5),
+            figsize=(8, 3),
+            separate_legend=False,
+            gpu=True,
+        )
+
+    for datasets in [
+        ("coco-nomic-id-768-normalized", "coco-nomic-768-normalized"),
+        ("imagenet-align-id-640-normalized", "imagenet-align-640-normalized"),
+        ("laion-clip-id-512-normalized", "laion-clip-512-normalized"),
+        ("yandex-id-200-cosine", "yandex-200-cosine"),
+    ]:
+        performance_gap_plot(
+            out_dir,
+            datasets[0],
+            datasets[1],
+            summary,
+            pca_mahalanobis,
+            recall=0.95,
+            gpu=False,
+        )
+
+    latency_difference_plot(
+        summary,
+        detail,
+        0.95,
+        ID_DATASETS + ID_DATASETS_ADDITIONAL + OOD_DATASETS,
+        output=out_dir,
+        algorithms=selected,
+        significance_level=0.01,
+        gpu=False,
     )
 
 
@@ -1052,7 +1087,80 @@ def latency_difference_plot(
         plt.tight_layout()
         filename = f"latency-critdiff-{dataset}-{recall}{gpu_suffix}.png"
         print("Writing", pathlib.Path(output) / filename)
-        plt.savefig(pathlib.Path(output) / filename)
+        plt.savefig(pathlib.Path(output) / filename, dpi=600)
+
+
+def print_metric_table(data, recall=0.9, k=100, algorithms=None, metric="build_time"):
+    filtered_datasets = [
+        "agnews-mxbai-1024-euclidean",
+        "arxiv-nomic-768-normalized",
+        "gooaq-distilroberta-768-normalized",
+        "imagenet-clip-512-normalized",
+        "landmark-nomic-768-normalized",
+        "yahoo-minilm-384-normalized",
+    ]
+
+    filtered_data = data.filter(pl.col("k") == k).filter(pl.col("dataset").is_in(filtered_datasets))
+    if algorithms is not None:
+        filtered_data = filtered_data.filter(pl.col("algorithm").is_in(algorithms))
+
+    best_qps_points = (
+        filtered_data.filter(pl.col("recall") >= recall)
+        .sort("qps", descending=True)
+        .group_by(["dataset", "algorithm"])
+        .first()
+        .select(["dataset", "algorithm", "recall", "build_time", "index_size", "qps"])
+        .sort(["dataset", "algorithm"])
+    )
+
+    if best_qps_points.is_empty():
+        print(f"No points found exceeding recall {recall}")
+        return
+
+    pivot_table = best_qps_points.pivot(on="dataset", index="algorithm", values=metric)
+
+    datasets = [col for col in pivot_table.columns if col != "algorithm"]
+    pivot_table = pivot_table.with_columns(
+        pl.concat_list([pl.col(ds) for ds in datasets]).list.mean().alias("avg_metric")
+    ).sort("avg_metric")
+
+    datasets = [col for col in pivot_table.columns if col not in ["algorithm", "avg_metric"]]
+    dataset_short_names = [ds.split("-")[0] for ds in datasets]
+
+    print("\\begin{table}[ht!]")
+    print("\\begin{center}")
+    metric_description = "Index construction times (seconds)" if metric == "build_time" else "Index sizes (KB)"
+    sort_description = "index construction times" if metric == "build_time" else "index sizes"
+    print(
+        f"\\caption{{{metric_description} with throughput-optimized hyperparameters at ${int(recall * 100)}\\%$ recall. "
+        f"Algorithms are sorted based on their average {sort_description}.}}"
+    )
+    print("\\label{table:construction}")
+    print("\\begin{NiceTabular}{l l l l l l l }")
+    print("\\toprule")
+
+    header_row = "algorithm & " + " & ".join(dataset_short_names) + " \\\\"
+    print(header_row)
+    print("\\midrule")
+
+    for row in pivot_table.rows(named=True):
+        algorithm_name = row["algorithm"]
+        row_values = [algorithm_name]
+
+        for ds in datasets:
+            metric_value = row.get(ds)
+            if metric_value is not None:
+                row_values.append(str(int(round(metric_value))))
+            else:
+                row_values.append("-")
+
+        row_str = " & ".join(row_values) + " \\\\"
+        print(row_str)
+
+    print("\\bottomrule")
+    print("\\end{NiceTabular}")
+    print("\\end{center}")
+    print("\\end{table}")
 
 
 if __name__ == "__main__":
@@ -1061,7 +1169,7 @@ if __name__ == "__main__":
     aparser.add_argument("--output", help="the path to the output directory", default="plots")
     aparser.add_argument(
         "--plot-type",
-        help="type of plot (pareto, radar, difficulty, performance-gap, split-difficulties, critdiff)",
+        help="type of plot (pareto, radar, difficulty, performance-gap, split-difficulties, critdiff, build-time-table)",
         default="pareto",
     )
     aparser.add_argument("--dataset", help="dataset", default="agnews-mxbai-1024-euclidean")
@@ -1090,47 +1198,49 @@ if __name__ == "__main__":
     count = int(args.count)
     recall = float(args.recall)
 
+    if datasets[0].endswith("-binary"):
+        point_type = "binary"
+        distance_metric = "hamming"
+    elif datasets[0].endswith("-uint8"):
+        point_type = "uint8"
+        distance_metric = "euclidean"
+    else:
+        point_type = "float"
+        distance_metric = "normalized"
+
+    definitions = get_definitions(
+        dimension=None,
+        point_type=point_type,
+        distance_metric=distance_metric,
+        count=count,
+        base_dir="vibe/algorithms",
+    )
+
+    definitions = filter_disabled_algorithms(definitions)
+    definitions = filter_algorithms_by_device(definitions, args.gpu)
+
+    all_algorithms = list(sorted(set(definition.algorithm for definition in definitions)))
+
     if args.selected:
         algorithms = [
-            "lorann",
-            "symphonyqg",
             "glass",
-            "ngt-qg",
-            "ngt-onng",
-            "scann",
             "hnswlib",
             "ivfpqfs(faiss)",
+            "lorann",
+            "ngt-onng",
+            "ngt-qg",
+            "scann",
+            "symphonyqg",
             "vamana-lvq(svs)",
         ]
     else:
-        if datasets[0].endswith("-binary"):
-            point_type = "binary"
-            distance_metric = "hamming"
-        elif datasets[0].endswith("-uint8"):
-            point_type = "uint8"
-            distance_metric = "euclidean"
-        else:
-            point_type = "float"
-            distance_metric = "normalized"
-
-        definitions = get_definitions(
-            dimension=None,
-            point_type=point_type,
-            distance_metric=distance_metric,
-            count=count,
-            base_dir="vibe/algorithms",
-        )
-
-        definitions = filter_disabled_algorithms(definitions)
-        definitions = filter_algorithms_by_device(definitions, args.gpu)
-
-        algorithms = list(sorted(set(definition.algorithm for definition in definitions)))
+        algorithms = all_algorithms
 
     if args.plot_type == "pareto":
         if args.gpu:
             ylim = (2e3, 3e5)
         else:
-            ylim = (2e2, 1.1e4)
+            ylim = (1e1, 1.1e4)
 
         if "llama-128-ip" in datasets or "yi-128-ip" in datasets:
             xlim = (0, 1)
@@ -1155,6 +1265,7 @@ if __name__ == "__main__":
             summary,
             query_stats,
             algorithms=algorithms,
+            all_algorithms=all_algorithms,
             height=len(algorithms) / 2,
             recall=recall,
             k=count,
@@ -1198,7 +1309,11 @@ if __name__ == "__main__":
             k=count,
             gpu=args.gpu,
         )
+    elif args.plot_type == "build-time-table":
+        print_metric_table(summary, recall=recall, k=count, algorithms=algorithms, metric="build_time")
+    elif args.plot_type == "index-size-table":
+        print_metric_table(summary, recall=recall, k=count, algorithms=algorithms, metric="index_size")
     elif args.plot_type == "paper":
-        paper(out_dir, summary, detail, query_stats, pca_mahalanobis)
+        paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis)
     else:
         raise ValueError(f"invalid plot type: {args.plot_type}")
