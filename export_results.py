@@ -49,6 +49,8 @@ def export_results(path, data_dir):
                 n_queries = len(times)
                 recalls = hfp[query_params]["recalls"][:] / k
                 qps = 1 / hfp[query_params].attrs["best_search_time"]
+                build_time = hfp[query_params].attrs["build_time"]
+                index_size = hfp[query_params].attrs["index_size"]
                 summary = dict(
                     k=k,
                     dataset=dataset,
@@ -56,6 +58,8 @@ def export_results(path, data_dir):
                     params=params,
                     qps=qps,
                     recall=recalls.mean(),
+                    build_time=build_time,
+                    index_size=index_size,
                 )
                 detail = pl.DataFrame(
                     dict(
@@ -66,6 +70,8 @@ def export_results(path, data_dir):
                         params=params,
                         time=times,
                         recall=recalls,
+                        build_time=build_time,
+                        index_size=index_size,
                     )
                 )
                 yield dataset, summary, detail
