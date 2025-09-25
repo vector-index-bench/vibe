@@ -104,7 +104,12 @@ Common options for run.py:
 - `--count k`: Run the benchmarks using `k` nearest neighbors (default 100).
 - `--gpu`: Run the benchmark in GPU mode.
 
-The benchmark should take less than 24 hours to run for a given dataset using parallelism > 8. We recommend having at least 16 GB of memory per used process.
+For all options, see
+```sh
+python3 run.py --help
+```
+
+The benchmark should take less than 24 hours to run for a given dataset using parallelism > 12. We recommend having at least 16 GB of memory per used core.
 
 > [!TIP]
 > See an [example Slurm job](slurm/run.sh) for running the benchmark using Slurm.
