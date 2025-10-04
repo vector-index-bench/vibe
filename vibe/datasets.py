@@ -198,6 +198,61 @@ def write_output(
             f.create_dataset("learn_neighbors", data=learn_neighbors)
 
 
+def write_multi_output(
+    fn: str,
+    train_embeddings: numpy.ndarray,
+    train_counts: numpy.ndarray,
+    test_embeddings: numpy.ndarray,
+    test_counts: numpy.ndarray,
+    distance: str = "cosine",
+    point_type: str = "float",
+    count: int = 100,
+) -> None:
+    """
+    Writes multi-vector embeddings to an HDF5 file and computes nearest neighbors using Chamfer distance.
+
+    Args:
+        fn (str): The name of the HDF5 file to write.
+        train_embeddings (numpy.ndarray): All training vectors concatenated, shape (total_train_vectors, dim).
+        train_counts (numpy.ndarray): Number of vectors per training document, shape (n_train_docs,).
+        test_embeddings (numpy.ndarray): All test vectors concatenated, shape (total_test_vectors, dim).
+        test_counts (numpy.ndarray): Number of vectors per test query, shape (n_test_queries,).
+        distance (str): The distance metric to use (cosine, euclidean, or ip).
+        point_type (str): The type of the data points. Defaults to "float".
+        count (int): The number of nearest neighbors to compute. Defaults to 100.
+    """
+    from vibe.algorithms.chamfer.module import Chamfer
+
+    dimension = train_embeddings.shape[1]
+    n_train_docs = len(train_counts)
+    n_test_queries = len(test_counts)
+
+    print(f"train size: {n_train_docs} documents, {train_embeddings.shape[0]} vectors, dim={dimension}")
+    print(f"test size: {n_test_queries} queries, {test_embeddings.shape[0]} vectors, dim={dimension}")
+
+    with h5py.File(fn, "w") as f:
+        f.attrs["distance"] = distance
+        f.attrs["dimension"] = dimension
+        f.attrs["point_type"] = point_type
+        f.attrs["multi_vector"] = True
+
+        f.create_dataset("train", data=train_embeddings)
+        f.create_dataset("train_counts", data=train_counts)
+        f.create_dataset("test", data=test_embeddings)
+        f.create_dataset("test_counts", data=test_counts)
+
+        neighbors_ds = f.create_dataset("neighbors", (n_test_queries, count), dtype=int)
+
+        chamfer = Chamfer(distance)
+        chamfer.fit((train_embeddings, train_counts))
+
+        print("Computing true k-nn for test using Chamfer distance...")
+        chamfer.batch_query((test_embeddings, test_counts), count)
+        neighbors = chamfer.get_batch_results()
+
+        neighbors_ds[:] = neighbors
+
+
 def train_test_split(
     X: numpy.ndarray, test_size: int = 1000, dimension: int = None
 ) -> Tuple[numpy.ndarray, numpy.ndarray]:
@@ -690,6 +745,42 @@ def gemma_embed(doc_type="corpus"):
     return f
 
 
+def colbert_embed(doc_type="corpus"):
+    from colbert.infra import ColBERTConfig
+    from colbert.modeling.checkpoint import Checkpoint
+
+    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    config = ColBERTConfig()
+    checkpoint = Checkpoint("colbert-ir/colbertv2.0", colbert_config=config)
+    checkpoint = checkpoint.to(device)
+
+    def f(sentences):
+        if doc_type == "query":
+            embeddings_batch = checkpoint.queryFromText(sentences, bsize=256)
+        else:
+            embeddings_batch = checkpoint.docFromText(sentences, bsize=256)
+
+        concatenated_embeddings = []
+        counts_per_document = []
+
+        for i in range(embeddings_batch.shape[0]):
+            doc_embeddings = embeddings_batch[i]
+
+            non_zero_mask = torch.any(doc_embeddings != 0, dim=1)
+            non_zero_embeddings = doc_embeddings[non_zero_mask]
+
+            num_vectors = non_zero_embeddings.shape[0]
+            concatenated_embeddings.append(non_zero_embeddings.cpu().numpy())
+            counts_per_document.append(num_vectors)
+
+        concatenated_embeddings = numpy.vstack(concatenated_embeddings)
+        counts_per_document = numpy.array(counts_per_document, dtype=numpy.int32)
+
+        return concatenated_embeddings, counts_per_document
+
+    return f
+
+
 def potion_embed(doc_type="corpus"):
     from model2vec import StaticModel
 
@@ -831,6 +922,48 @@ def embedding_dataset(
         learn_embeddings = numpy.vstack(learn_embeddings)
 
     write_output(out_fn, corpus_embeddings, query_embeddings, learn_embeddings, distance=metric)
+
+
+def multi_embedding_dataset(
+    out_fn,
+    corpus_dataloader,
+    query_dataloader,
+    embedding,
+    query_embedding=None,
+    learn_dataloader=None,
+    metric="cosine",
+):
+    if query_embedding is None:
+        query_embedding = embedding
+
+    if torch.accelerator.is_available():
+        device = torch.accelerator.current_accelerator().type
+    else:
+        device = "cpu"
+
+    corpus_embeddings_list = []
+    corpus_counts_list = []
+    for batch in tqdm.tqdm(corpus_dataloader):
+        if torch.is_tensor(batch):
+            batch = batch.to(device)
+        embeddings, counts = embedding(batch)
+        corpus_embeddings_list.append(embeddings)
+        corpus_counts_list.append(counts)
+    corpus_embeddings = numpy.vstack(corpus_embeddings_list)
+    corpus_counts = numpy.concatenate(corpus_counts_list)
+
+    query_embeddings_list = []
+    query_counts_list = []
+    for batch in tqdm.tqdm(query_dataloader):
+        if torch.is_tensor(batch):
+            batch = batch.to(device)
+        embeddings, counts = query_embedding(batch)
+        query_embeddings_list.append(embeddings)
+        query_counts_list.append(counts)
+    query_embeddings = numpy.vstack(query_embeddings_list)
+    query_counts = numpy.concatenate(query_counts_list)
+
+    write_multi_output(out_fn, corpus_embeddings, corpus_counts, query_embeddings, query_counts, distance=metric)
 
 
 def text_embedding_dataset(

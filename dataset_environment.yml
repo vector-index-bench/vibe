@@ -6,6 +6,10 @@ channels:
   - pytorch
 dependencies:
   - python=3.11
+  - colbert-ai=0.2.21
+  - cuda-libraries=12.8.1
+  - cuda-runtime=12.8.1
+  - cuda-toolkit=12.8.1
   - cupy=13.6.0
   - cuvs=25.08.00
   - datasets=4.0.0
@@ -17,6 +21,3 @@ dependencies:
   - numpy=1.26.4
   - psutil=7.0.0
   - scikit-learn=1.6.1
-  - cuda-libraries=12.8.1
-  - cuda-runtime=12.8.1
-  - cuda-toolkit=12.8.1
