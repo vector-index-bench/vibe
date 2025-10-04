@@ -1,0 +1,30 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  apt-get install -y --no-install-recommends zlib1g-dev libspdlog-dev libeigen3-dev libopenblas-dev
+  apt-get clean && rm -rf /var/lib/apt/lists/*
+
+  git clone https://github.com/cmuparlay/parlaylib
+
+  cd parlaylib
+  git config --global --add safe.directory /parlaylib
+  git reset --hard 51017699dcc421f80479cdb238d3092233ad0d26
+
+  mkdir build && cd build
+  cmake ..
+  cmake --build . --target install
+
+  cd ../../
+
+  git clone https://github.com/DBGroup-SUSTech/multi-vector-retrieval
+
+  cd multi-vector-retrieval
+  git config --global --add safe.directory /multi-vector-retrieval
+  git reset --hard 075ddf687449dea899ffdb5dae130468b80a335b
+
+  sed -i 's/^set(USE_CUDA ON)$/set(USE_CUDA OFF)/' CMakeLists.txt
+
+  mkdir build && cd build
+  cmake -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF ..
+  make -j

@@ -1,0 +1,12 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  git clone https://github.com/ThirdAIResearch/Dessert
+
+  cd Dessert
+  git config --global --add safe.directory /Dessert
+  git reset --hard 01d4077119727952b654b09c21709a39c41123ac
+  git submodule update --init --recursive
+
+  pip install .

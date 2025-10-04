@@ -1,0 +1,26 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+      | gpg --dearmor > /usr/share/keyrings/oneapi-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+      > /etc/apt/sources.list.d/oneapi.list
+
+  apt-get update
+  apt-get install -y --no-install-recommends zlib1g-dev intel-oneapi-mkl-devel
+  apt-get clean && rm -rf /var/lib/apt/lists/*
+
+  export MKLROOT=/opt/intel/oneapi/mkl/latest
+
+  git clone https://github.com/ejaasaari/emvb
+
+  cd emvb
+  git config --global --add safe.directory /emvb
+  git reset --hard da15da83a72c8807cfbc5342e3f0a5e352ee45d9
+  git checkout bindings
+  git submodule update --init --recursive
+
+  mkdir build && cd build
+  cmake -DFAISS_ENABLE_GPU=OFF -DFAISS_ENABLE_PYTHON=OFF -DBUILD_TESTING=OFF -DMKL_DIR="$MKLROOT/lib/cmake/mkl" ..
+  make -j

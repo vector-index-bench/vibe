@@ -1,0 +1,8 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  mkdir -p /cache
+  export TMPDIR=/cache
+
+  pip install --no-cache-dir fast-plaid
