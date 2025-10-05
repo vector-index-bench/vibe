@@ -221,7 +221,7 @@ def write_multi_output(
         point_type (str): The type of the data points. Defaults to "float".
         count (int): The number of nearest neighbors to compute. Defaults to 100.
     """
-    from vibe.algorithms.chamfer.module import Chamfer
+    from vibe.algorithms.chamfer.module import Chamfer, ChamferGPU
 
     dimension = train_embeddings.shape[1]
     n_train_docs = len(train_counts)
@@ -242,15 +242,24 @@ def write_multi_output(
         f.create_dataset("test_counts", data=test_counts)
 
         neighbors_ds = f.create_dataset("neighbors", (n_test_queries, count), dtype=int)
+        distances_ds = f.create_dataset("distances", (n_test_queries, count), dtype=float)
+        avg_dists_ds = f.create_dataset("avg_distances", n_test_queries, dtype=float)
 
-        chamfer = Chamfer(distance)
+        if torch.cuda.is_available():
+            chamfer = ChamferGPU("chamfer")
+        else:
+            chamfer = Chamfer("chamfer")
+
         chamfer.fit((train_embeddings, train_counts))
 
         print("Computing true k-nn for test using Chamfer distance...")
-        chamfer.batch_query((test_embeddings, test_counts), count)
-        neighbors = chamfer.get_batch_results()
+        (neighbors, distances), avg_distances = chamfer.batch_query_with_distances(
+            (test_embeddings, test_counts), count, return_avg_dist=True
+        )
 
         neighbors_ds[:] = neighbors
+        distances_ds[:] = distances
+        avg_dists_ds[:] = avg_distances
 
 
 def train_test_split(
