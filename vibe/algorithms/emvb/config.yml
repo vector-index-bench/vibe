@@ -1,0 +1,12 @@
+float:
+  chamfer:
+  - base_args: ['@metric']
+    constructor: EMVB
+    disabled: false
+    singularity_image: emvb
+    module: vibe.algorithms.emvb
+    name: emvb
+    run_groups:
+      base:
+        args: [[128], [64], [8], [2], [0.4], [0.4]]
+        query_args: [[2, 4, 8], [0.4], [0.4], [512, 1000]]

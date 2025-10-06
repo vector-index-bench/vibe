@@ -1,0 +1,12 @@
+float:
+  chamfer:
+  - base_args: ['@metric']
+    constructor: PLAID
+    disabled: false
+    singularity_image: plaid
+    module: vibe.algorithms.plaid
+    name: plaid
+    run_groups:
+      base:
+        args: [[]]
+        query_args: [[]]

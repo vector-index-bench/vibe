@@ -1,0 +1,12 @@
+float:
+  chamfer:
+  - base_args: ['@metric']
+    constructor: IGPIndex
+    disabled: false
+    singularity_image: igp
+    module: vibe.algorithms.igp
+    name: igp
+    run_groups:
+      base:
+        args: [[256], [2], [8], [50]]
+        query_args: [[4, 8, 16], [30, 50, 100]]

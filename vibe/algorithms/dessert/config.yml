@@ -1,0 +1,12 @@
+float:
+  chamfer:
+  - base_args: ['@metric']
+    constructor: DESSERT
+    disabled: false
+    singularity_image: dessert
+    module: vibe.algorithms.dessert
+    name: dessert
+    run_groups:
+      base:
+        args: [[32], [6], [128], [10]]
+        query_args: [[1000, 2000, 4000]]
