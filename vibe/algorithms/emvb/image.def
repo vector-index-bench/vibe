@@ -15,6 +15,9 @@ From: base.sif
 
   git clone https://github.com/ejaasaari/emvb
 
+  micromamba install -y -q -c conda-forge -c pytorch faiss-cpu=1.12.0 tqdm==4.67.1
+  micromamba clean --all --yes
+
   cd emvb
   git config --global --add safe.directory /emvb
   git reset --hard da15da83a72c8807cfbc5342e3f0a5e352ee45d9

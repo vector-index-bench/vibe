@@ -6,7 +6,6 @@ channels:
   - pytorch
 dependencies:
   - python=3.11
-  - colbert-ai=0.2.21
   - cuda-libraries=12.8.1
   - cuda-runtime=12.8.1
   - cuda-toolkit=12.8.1

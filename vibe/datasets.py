@@ -5,6 +5,8 @@ VIBE_CACHE = os.environ.get("VIBE_CACHE", ".")
 DATA_EXTRACT_DIR = f"{VIBE_CACHE}/data"
 os.environ["HF_HOME"] = f"{VIBE_CACHE}/huggingface/cache"
 os.environ["TORCH_HOME"] = f"{VIBE_CACHE}/torch/cache"
+os.environ["TORCH_EXTENSIONS_DIR"] = f"{VIBE_CACHE}/torch/extensions"
+os.environ["XDG_CACHE_HOME"] = f"{VIBE_CACHE}/cache"
 
 import random
 import zipfile
@@ -204,7 +206,7 @@ def write_multi_output(
     train_counts: numpy.ndarray,
     test_embeddings: numpy.ndarray,
     test_counts: numpy.ndarray,
-    distance: str = "cosine",
+    distance: str = "chamfer",
     point_type: str = "float",
     count: int = 100,
 ) -> None:
@@ -217,7 +219,7 @@ def write_multi_output(
         train_counts (numpy.ndarray): Number of vectors per training document, shape (n_train_docs,).
         test_embeddings (numpy.ndarray): All test vectors concatenated, shape (total_test_vectors, dim).
         test_counts (numpy.ndarray): Number of vectors per test query, shape (n_test_queries,).
-        distance (str): The distance metric to use (cosine, euclidean, or ip).
+        distance (str): The distance metric to use (chamfer).
         point_type (str): The type of the data points. Defaults to "float".
         count (int): The number of nearest neighbors to compute. Defaults to 100.
     """
@@ -252,7 +254,7 @@ def write_multi_output(
 
         chamfer.fit((train_embeddings, train_counts))
 
-        print("Computing true k-nn for test using Chamfer distance...")
+        print("Computing true k-nn for test...")
         (neighbors, distances), avg_distances = chamfer.batch_query_with_distances(
             (test_embeddings, test_counts), count, return_avg_dist=True
         )
@@ -765,9 +767,9 @@ def colbert_embed(doc_type="corpus"):
 
     def f(sentences):
         if doc_type == "query":
-            embeddings_batch = checkpoint.queryFromText(sentences, bsize=256)
+            embeddings_batch = checkpoint.queryFromText(sentences)
         else:
-            embeddings_batch = checkpoint.docFromText(sentences, bsize=256)
+            embeddings_batch = checkpoint.docFromText(sentences)
 
         concatenated_embeddings = []
         counts_per_document = []
@@ -984,6 +986,7 @@ def text_embedding_dataset(
     query_embedding=None,
     subset=None,
     ood=False,
+    multi=False,
     metric="cosine",
 ):
     test_size = 1000
@@ -1004,9 +1007,14 @@ def text_embedding_dataset(
         query_dataloader = DataLoader(queries, batch_size=batch_size, shuffle=False, num_workers=0)
         learn_dataloader = DataLoader(learn, batch_size=batch_size, shuffle=False, num_workers=0)
 
-    embedding_dataset(
-        out_fn, corpus_dataloader, query_dataloader, embedding, query_embedding, learn_dataloader, metric=metric
-    )
+    if multi:
+        multi_embedding_dataset(
+            out_fn, corpus_dataloader, query_dataloader, embedding, query_embedding, learn_dataloader, metric=metric
+        )
+    else:
+        embedding_dataset(
+            out_fn, corpus_dataloader, query_dataloader, embedding, query_embedding, learn_dataloader, metric=metric
+        )
 
 
 def celeba_loader(transform):
@@ -1129,6 +1137,18 @@ def ccnews(out_fn, embedding, query_embedding=None, metric="normalized"):
 def gooaq(out_fn, embedding, query_embedding=None, metric="normalized"):
     text_embedding_dataset(
         out_fn, "sentence-transformers/gooaq", "answer", "question", embedding, query_embedding, metric=metric
+    )
+
+
+def squad(out_fn, embedding, query_embedding=None, metric="chamfer"):
+    text_embedding_dataset(
+        out_fn, "sentence-transformers/squad", "answer", "question", embedding, query_embedding, metric=metric, multi=True
+    )
+
+
+def natural(out_fn, embedding, query_embedding=None, metric="chamfer"):
+    text_embedding_dataset(
+        out_fn, "sentence-transformers/natural-questions", "answer", "query", embedding, query_embedding, metric=metric, multi=True
     )
 
 
@@ -1387,4 +1407,6 @@ DATASETS: Dict[str, Callable[[str], None]] = {
     "yandex-id-200-cosine": lambda out_fn: ood_to_id_dataset(out_fn, "yandex-200-cosine"),
     "imagenet-align-id-640-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "imagenet-align-640-normalized"),
     "coco-nomic-id-768-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "coco-nomic-768-normalized"),
+    "squad-colbert-128-chamfer": lambda out_fn: squad(out_fn, colbert_embed(), colbert_embed("query")),
+    "natural-colbert-128-chamfer": lambda out_fn: natural(out_fn, colbert_embed(), colbert_embed("query")),
 }

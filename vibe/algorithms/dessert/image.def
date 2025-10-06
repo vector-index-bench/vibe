@@ -2,6 +2,8 @@ Bootstrap: localimage
 From: base.sif
 
 %post
+  pip install --no-cache-dir lorann==0.4
+
   git clone https://github.com/ThirdAIResearch/Dessert
 
   cd Dessert
