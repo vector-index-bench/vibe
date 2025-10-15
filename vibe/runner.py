@@ -30,6 +30,13 @@ def run_individual_query(
 
     prepared_queries = hasattr(algo, "prepare_query")
 
+    if distance == "chamfer":
+        from vibe.algorithms.chamfer.module import Chamfer
+
+        chamfer_index = Chamfer("cpu")
+        chamfer_index.fit(X_train)
+        X_test_padded = chamfer_index.pad_input(X_test)
+
     best_search_time = float("inf")
     for i in range(run_count):
         print("Run %d/%d..." % (i + 1, run_count))
@@ -95,24 +102,33 @@ def run_individual_query(
             else:
                 batch_latencies = [total / float(len(X))] * len(X)
 
-            candidates = [
-                [
-                    (int(idx), float(dist))
-                    for idx, dist in zip(single_results, metrics[distance].distance(v, X_train[single_results]))
+            if distance == "chamfer":
+                candidates = [
+                    [
+                        (int(idx), float(dist))
+                        for idx, dist in zip(single_results, chamfer_index.distance_to_indices(v, single_results))
+                    ]
+                    for v, single_results in zip(X_test_padded, results)
                 ]
-                for v, single_results in zip(X, results)
-            ]
+            else:
+                candidates = [
+                    [
+                        (int(idx), float(dist))
+                        for idx, dist in zip(single_results, metrics[distance].distance(v, X_train[single_results]))
+                    ]
+                    for v, single_results in zip(X, results)
+                ]
             return [(latency, v) for latency, v in zip(batch_latencies, candidates)]
 
-        if gpu:
-            results = batch_query(X_test)
+        if gpu or distance == "chamfer":
+            results = batch_query(X_test_padded)
         else:
             results = [single_query(x) for x in X_test]
 
         total_time = sum(time for time, _ in results)
         total_candidates = sum(len(candidates) for _, candidates in results)
-        search_time = total_time / len(X_test)
-        avg_candidates = total_candidates / len(X_test)
+        search_time = total_time / len(results)
+        avg_candidates = total_candidates / len(results)
         best_search_time = min(best_search_time, search_time)
 
     verbose = hasattr(algo, "query_verbose")
@@ -204,6 +220,15 @@ def load_ood_data(dataset_name: str):
     return None, None
 
 
+def load_counts(dataset_name: str):
+    import numpy
+
+    D, dimension = get_dataset(dataset_name)
+    train_counts = numpy.array(D["train_counts"])
+    test_counts = numpy.array(D["test_counts"])
+    return train_counts, test_counts
+
+
 def build_index(algo: BaseANN, constructor_name, X_train, X_learn, X_learn_neighbors) -> Tuple:
     """Builds the ANN index for a given ANN algorithm on the training data.
 
@@ -258,6 +283,13 @@ function"""
         X_learn, X_learn_neighbors = load_ood_data(dataset_name)
     else:
         X_learn, X_learn_neighbors = None, None
+
+    if distance == "chamfer":
+        train_counts, test_counts = load_counts(dataset_name)
+        X_train = (X_train, train_counts)
+        X_test = (X_test, test_counts)
+    else:
+        train_counts, test_counts = None, None
 
     try:
         if hasattr(algo, "supports_prepared_queries"):

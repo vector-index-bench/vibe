@@ -1205,8 +1205,12 @@ if __name__ == "__main__":
         point_type = "uint8"
         distance_metric = "euclidean"
     else:
-        point_type = "float"
-        distance_metric = "normalized"
+        if "chamfer" in datasets[0]:
+            point_type = "vector"
+            distance_metric = "chamfer"
+        else:
+            point_type = "float"
+            distance_metric = "normalized"
 
     definitions = get_definitions(
         dimension=None,
@@ -1239,11 +1243,15 @@ if __name__ == "__main__":
     if args.plot_type == "pareto":
         if args.gpu:
             ylim = (2e3, 3e5)
+        elif "chamfer" in datasets[0]:
+            ylim = (1, 1e3)
         else:
             ylim = (1e1, 1.1e4)
 
         if "llama-128-ip" in datasets or "yi-128-ip" in datasets:
             xlim = (0, 1)
+        elif "chamfer" in datasets[0]:
+            xlim = (0.0, 1.0)
         else:
             xlim = (0.7, 1.0)
 

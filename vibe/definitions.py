@@ -215,7 +215,7 @@ def _get_algorithm_definitions(
     # param `_` is filename, not specific name
     for _, config in configs.items():
         c = []
-        if "any" in config:
+        if "any" in config and point_type != "vector":
             c.extend(config["any"])
         if distance_metric in config:
             c.extend(config[distance_metric])

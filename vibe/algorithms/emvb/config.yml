@@ -1,4 +1,4 @@
-float:
+vector:
   chamfer:
   - base_args: ['@metric']
     constructor: EMVB
@@ -8,5 +8,5 @@ float:
     name: emvb
     run_groups:
       base:
-        args: [[128], [64], [8], [2], [0.4], [0.4]]
-        query_args: [[2, 4, 8], [0.4], [0.4], [512, 1000]]
+        args: [[1024, 2048, 4096, 8192], [32], [8]]
+        query_args: [[1, 2, 4], [0.4], [0.4, 0.5], [128, 256, 512], [1000, 2000, 4000]]

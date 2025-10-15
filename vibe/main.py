@@ -135,6 +135,8 @@ def parse_dataset_string(s):
     # Get data type if specified, otherwise default to "float"
     if dimension_index + 2 < len(parts):
         point_type = parts[dimension_index + 2]
+    elif distance == "chamfer":
+        point_type = "vector"
     else:
         point_type = "float"
 

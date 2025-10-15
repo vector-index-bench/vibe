@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import os
 import tqdm
 import random
 import faiss
@@ -63,16 +62,19 @@ def get_sample_vecs_l(sample_itemID_l: list, DEFAULT_CHUNKSIZE: int, train: np.n
             item_n_vecs = item_n_vecs_l[itemID]
             base_vecID_chunk = item_n_vecs_offset_chunk_l[offset_itemID]
             vecsID_l_chunk = np.concatenate(
-                (vecsID_l_chunk, np.arange(base_vecID_chunk, base_vecID_chunk + item_n_vecs, 1))).astype(np.uint64)
+                (vecsID_l_chunk, np.arange(base_vecID_chunk, base_vecID_chunk + item_n_vecs, 1))
+            ).astype(np.uint64)
             item_n_vec_l_chunk = np.concatenate((item_n_vec_l_chunk, [item_n_vecs]))
 
         sample_vecs_l_chunk = item_vecs_l_chunk[vecsID_l_chunk, :]
-        sample_vecs_l = sample_vecs_l_chunk if len(sample_vecs_l) == 0 else np.concatenate(
-            (sample_vecs_l, sample_vecs_l_chunk)).reshape(-1, vec_dim)
+        sample_vecs_l = (
+            sample_vecs_l_chunk
+            if len(sample_vecs_l) == 0
+            else np.concatenate((sample_vecs_l, sample_vecs_l_chunk)).reshape(-1, vec_dim)
+        )
 
         vecsID_l_chunk = vecsID_l_chunk + item_n_vecs_offset_l[base_itemID]
-        vecsID_l = np.concatenate(
-            (vecsID_l, vecsID_l_chunk))
+        vecsID_l = np.concatenate((vecsID_l, vecsID_l_chunk))
 
         sample_item_n_vec_l = np.concatenate((sample_item_n_vec_l, item_n_vec_l_chunk))
 
@@ -80,8 +82,9 @@ def get_sample_vecs_l(sample_itemID_l: list, DEFAULT_CHUNKSIZE: int, train: np.n
 
     sample_vecs_l = sample_vecs_l.reshape(-1, vec_dim)
 
-    assert len(vecsID_l) == len(
-        sample_vecs_l), f"len(vecsID_l) {len(vecsID_l)}, len(sample_vecs_l) {len(sample_vecs_l)}"
+    assert len(vecsID_l) == len(sample_vecs_l), (
+        f"len(vecsID_l) {len(vecsID_l)}, len(sample_vecs_l) {len(sample_vecs_l)}"
+    )
     vecsID_l = np.array(vecsID_l, dtype=np.uint64)
 
     sample_item_n_vec_l = sample_item_n_vec_l.astype(np.uint32)
@@ -98,7 +101,7 @@ def compress_into_codes(embs: np.ndarray, centroid_l: np.ndarray):
     embs = torch.from_numpy(embs)
     for batch in embs.split(bsize):
         indices = (centroid_l @ batch.T.float()).max(dim=0).indices
-        indices = indices.to('cpu')
+        indices = indices.to("cpu")
         codes.append(indices)
 
     return torch.cat(codes)
@@ -107,7 +110,7 @@ def compress_into_codes(embs: np.ndarray, centroid_l: np.ndarray):
 def item_code_in_chunk(code_l: np.ndarray, itemlen_l: np.ndarray, itemID: int):
     vecs_start_idx = int(np.sum(itemlen_l[:itemID]))
     n_item_vecs = int(itemlen_l[itemID])
-    item_code = code_l[vecs_start_idx: vecs_start_idx + n_item_vecs]
+    item_code = code_l[vecs_start_idx : vecs_start_idx + n_item_vecs]
     return item_code
 
 
@@ -123,9 +126,9 @@ def sample_vector(train: np.ndarray, train_counts: np.ndarray):
     DEFAULT_CHUNKSIZE = len(train_counts)
 
     print("read sample vector from disk")
-    sample_vecs_l, sample_item_n_vec_l, _ = get_sample_vecs_l(sample_itemID_l=sample_itemID_l,
-                                                              DEFAULT_CHUNKSIZE=DEFAULT_CHUNKSIZE,
-                                                              train=train, train_counts=train_counts)
+    sample_vecs_l, sample_item_n_vec_l, _ = get_sample_vecs_l(
+        sample_itemID_l=sample_itemID_l, DEFAULT_CHUNKSIZE=DEFAULT_CHUNKSIZE, train=train, train_counts=train_counts
+    )
     return sample_vecs_l, sample_item_n_vec_l
 
 
@@ -179,18 +182,23 @@ def vq_ivf(train: np.ndarray, train_counts: np.ndarray, n_centroid: int):
 
     centroid_l = faiss_kmeans(sample_vecs_l=sample_vecs_l, n_centroid=n_centroid)
 
-    code_l, cluster2itemID_l, cluster_n_item_l = compute_assignment(train=train, train_counts=train_counts,
-                                                                    centroid_l=centroid_l)
+    code_l, cluster2itemID_l, cluster_n_item_l = compute_assignment(
+        train=train, train_counts=train_counts, centroid_l=centroid_l
+    )
     centroid_l = np.array(centroid_l, dtype=np.float32)
 
     return centroid_l, code_l, cluster2itemID_l, cluster_n_item_l
 
 
-def compute_assignment_sq(train: np.ndarray,
-                          train_counts: np.ndarray,
-                          centroid_l: np.ndarray,
-                          module: object,
-                          cutoff_l: np.ndarray, weight_l: np.ndarray, n_bit: int):
+def compute_assignment_sq(
+    train: np.ndarray,
+    train_counts: np.ndarray,
+    centroid_l: np.ndarray,
+    module: object,
+    cutoff_l: np.ndarray,
+    weight_l: np.ndarray,
+    n_bit: int,
+):
     doclens = train_counts
     n_vec = int(np.sum(doclens))
     vq_code_l = torch.empty((n_vec), dtype=torch.int32)
@@ -204,7 +212,7 @@ def compute_assignment_sq(train: np.ndarray,
     n_chunk = 1
     vq_code_offset = 0
     residual_code_offset = 0
-    centroid_l_cuda = torch.Tensor(centroid_l)#.to('cuda')
+    centroid_l_cuda = torch.Tensor(centroid_l)  # .to('cuda')
     for chunkID in tqdm.trange(n_chunk):
         # itemlen_l_chunk = np.load(os.path.join(base_embedding_dir, f'doclens{chunkID}.npy'))
         itemlen_l_chunk = train_counts
@@ -214,14 +222,15 @@ def compute_assignment_sq(train: np.ndarray,
 
         vq_code_l_chunk = compress_into_codes(embs=item_vecs_l_chunk, centroid_l=centroid_l_cuda)
 
-        residual_code_l_chunk, = sq_ins.compute_residual_code(vec_l=item_vecs_l_chunk,
-                                                            code_l=vq_code_l_chunk.numpy())
+        (residual_code_l_chunk,) = sq_ins.compute_residual_code(vec_l=item_vecs_l_chunk, code_l=vq_code_l_chunk.numpy())
         residual_code_l_chunk = np.array(residual_code_l_chunk, dtype=np.uint8)
 
-        vq_code_l[vq_code_offset:vq_code_offset + n_vec_chunk] = vq_code_l_chunk
+        vq_code_l[vq_code_offset : vq_code_offset + n_vec_chunk] = vq_code_l_chunk
         vq_code_offset += n_vec_chunk
 
-        residual_code_l[residual_code_offset:residual_code_offset + n_vec_chunk * n_val_per_vec] = residual_code_l_chunk
+        residual_code_l[residual_code_offset : residual_code_offset + n_vec_chunk * n_val_per_vec] = (
+            residual_code_l_chunk
+        )
         residual_code_offset += n_vec_chunk * n_val_per_vec
 
     vq_code_l = np.array(vq_code_l, dtype=np.uint32)
@@ -251,12 +260,18 @@ def vq_sq_ivf(train: np.ndarray, train_counts: np.ndarray, module: object, n_cen
 
     centroid_l, sample_code_l = faiss_kmeans_code(sample_vecs_l=sample_vecs_l, n_centroid=n_centroid)
 
-    cutoff_l, weight_l = module.compute_quantized_scalar(item_vec_l=sample_vecs_l, centroid_l=centroid_l,
-                                                         code_l=sample_code_l,
-                                                         n_bit=n_bit)
-    vq_code_l, residual_code_l = compute_assignment_sq(train=train, train_counts=train_counts,
-                                                       centroid_l=centroid_l, module=module,
-                                                       cutoff_l=cutoff_l, weight_l=weight_l, n_bit=n_bit)
+    cutoff_l, weight_l = module.compute_quantized_scalar(
+        item_vec_l=sample_vecs_l, centroid_l=centroid_l, code_l=sample_code_l, n_bit=n_bit
+    )
+    vq_code_l, residual_code_l = compute_assignment_sq(
+        train=train,
+        train_counts=train_counts,
+        centroid_l=centroid_l,
+        module=module,
+        cutoff_l=cutoff_l,
+        weight_l=weight_l,
+        n_bit=n_bit,
+    )
     centroid_l = np.array(centroid_l, dtype=np.float32)
     vq_code_l = np.array(vq_code_l, dtype=np.uint32)
     weight_l = np.array(weight_l, dtype=np.float32)

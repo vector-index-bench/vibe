@@ -2,6 +2,9 @@ Bootstrap: localimage
 From: base.sif
 
 %post
+  mkdir -p /cache
+  export TMPDIR=/cache
+
   wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
       | gpg --dearmor > /usr/share/keyrings/oneapi-archive-keyring.gpg
   echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
@@ -9,14 +12,29 @@ From: base.sif
 
   apt-get update
   apt-get install -y --no-install-recommends zlib1g-dev intel-oneapi-mkl-devel
+  apt-get install -y --no-install-recommends libeigen3-dev liblmdb-dev librocksdb-dev nlohmann-json3-dev libboost-dev libtbb-dev
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
   export MKLROOT=/opt/intel/oneapi/mkl/latest
 
-  git clone https://github.com/ejaasaari/emvb
-
   micromamba install -y -q -c conda-forge -c pytorch faiss-cpu=1.12.0 tqdm==4.67.1
   micromamba clean --all --yes
+
+  pip install --no-cache-dir lorann==0.4.2
+  pip install --no-cache-dir torch==2.8.0
+
+  git clone https://github.com/jacketsj/mopbucket
+
+  cd mopbucket
+  git config --global --add safe.directory /mopbucket
+  git reset --hard dcda2da26b282b443bad026cf292e7c93d2463d2
+  git submodule update --init --recursive
+
+  ./build.sh
+
+  cd ..
+
+  git clone https://github.com/ejaasaari/emvb
 
   cd emvb
   git config --global --add safe.directory /emvb

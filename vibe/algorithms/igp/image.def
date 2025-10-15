@@ -6,12 +6,25 @@ From: base.sif
   export TMPDIR=/cache
 
   apt-get install -y --no-install-recommends zlib1g-dev libspdlog-dev libeigen3-dev libopenblas-dev
+  apt-get install -y --no-install-recommends libeigen3-dev liblmdb-dev librocksdb-dev nlohmann-json3-dev libboost-dev libtbb-dev
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
   micromamba install -y -q -c conda-forge -c pytorch faiss-cpu=1.12.0
   micromamba clean --all --yes
 
+  pip install --no-cache-dir lorann==0.4.2
   pip install --no-cache-dir torch==2.8.0 tqdm==4.67.1
+
+  git clone https://github.com/jacketsj/mopbucket
+
+  cd mopbucket
+  git config --global --add safe.directory /mopbucket
+  git reset --hard dcda2da26b282b443bad026cf292e7c93d2463d2
+  git submodule update --init --recursive
+
+  ./build.sh
+
+  cd ..
 
   git clone https://github.com/cmuparlay/parlaylib
 

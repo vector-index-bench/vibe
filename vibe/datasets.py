@@ -207,7 +207,7 @@ def write_multi_output(
     test_embeddings: numpy.ndarray,
     test_counts: numpy.ndarray,
     distance: str = "chamfer",
-    point_type: str = "float",
+    point_type: str = "vector",
     count: int = 100,
 ) -> None:
     """
@@ -220,10 +220,10 @@ def write_multi_output(
         test_embeddings (numpy.ndarray): All test vectors concatenated, shape (total_test_vectors, dim).
         test_counts (numpy.ndarray): Number of vectors per test query, shape (n_test_queries,).
         distance (str): The distance metric to use (chamfer).
-        point_type (str): The type of the data points. Defaults to "float".
+        point_type (str): The type of the data points. Defaults to "vector".
         count (int): The number of nearest neighbors to compute. Defaults to 100.
     """
-    from vibe.algorithms.chamfer.module import Chamfer, ChamferGPU
+    from vibe.algorithms.chamfer.module import Chamfer
 
     dimension = train_embeddings.shape[1]
     n_train_docs = len(train_counts)
@@ -236,7 +236,6 @@ def write_multi_output(
         f.attrs["distance"] = distance
         f.attrs["dimension"] = dimension
         f.attrs["point_type"] = point_type
-        f.attrs["multi_vector"] = True
 
         f.create_dataset("train", data=train_embeddings)
         f.create_dataset("train_counts", data=train_counts)
@@ -245,23 +244,16 @@ def write_multi_output(
 
         neighbors_ds = f.create_dataset("neighbors", (n_test_queries, count), dtype=int)
         distances_ds = f.create_dataset("distances", (n_test_queries, count), dtype=float)
-        avg_dists_ds = f.create_dataset("avg_distances", n_test_queries, dtype=float)
 
-        if torch.cuda.is_available():
-            chamfer = ChamferGPU("chamfer")
-        else:
-            chamfer = Chamfer("chamfer")
-
+        device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+        chamfer = Chamfer(device)
         chamfer.fit((train_embeddings, train_counts))
 
         print("Computing true k-nn for test...")
-        (neighbors, distances), avg_distances = chamfer.batch_query_with_distances(
-            (test_embeddings, test_counts), count, return_avg_dist=True
-        )
+        neighbors, distances = chamfer.batch_query_with_distances((test_embeddings, test_counts), count)
 
         neighbors_ds[:] = neighbors
         distances_ds[:] = distances
-        avg_dists_ds[:] = avg_distances
 
 
 def train_test_split(
@@ -781,7 +773,7 @@ def colbert_embed(doc_type="corpus"):
             non_zero_embeddings = doc_embeddings[non_zero_mask]
 
             num_vectors = non_zero_embeddings.shape[0]
-            concatenated_embeddings.append(non_zero_embeddings.cpu().numpy())
+            concatenated_embeddings.append(non_zero_embeddings.cpu().numpy().astype(numpy.float32))
             counts_per_document.append(num_vectors)
 
         concatenated_embeddings = numpy.vstack(concatenated_embeddings)
@@ -989,7 +981,7 @@ def text_embedding_dataset(
     multi=False,
     metric="cosine",
 ):
-    test_size = 1000
+    test_size = 100
     batch_size = 256
 
     dataset = HuggingFaceDataset(dataset_name, attribute, subset)
@@ -1142,13 +1134,27 @@ def gooaq(out_fn, embedding, query_embedding=None, metric="normalized"):
 
 def squad(out_fn, embedding, query_embedding=None, metric="chamfer"):
     text_embedding_dataset(
-        out_fn, "sentence-transformers/squad", "answer", "question", embedding, query_embedding, metric=metric, multi=True
+        out_fn,
+        "sentence-transformers/squad",
+        "answer",
+        "question",
+        embedding,
+        query_embedding,
+        metric=metric,
+        multi=True,
     )
 
 
 def natural(out_fn, embedding, query_embedding=None, metric="chamfer"):
     text_embedding_dataset(
-        out_fn, "sentence-transformers/natural-questions", "answer", "query", embedding, query_embedding, metric=metric, multi=True
+        out_fn,
+        "sentence-transformers/natural-questions",
+        "answer",
+        "query",
+        embedding,
+        query_embedding,
+        metric=metric,
+        multi=True,
     )
 
 

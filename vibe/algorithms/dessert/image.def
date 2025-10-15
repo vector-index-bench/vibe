@@ -2,7 +2,34 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  pip install --no-cache-dir lorann==0.4
+  mkdir -p /cache
+  export TMPDIR=/cache
+
+  apt-get install -y --no-install-recommends libeigen3-dev liblmdb-dev librocksdb-dev nlohmann-json3-dev libboost-dev libtbb-dev
+
+  pip install --no-cache-dir lorann==0.4.2
+  pip install --no-cache-dir torch==2.8.0
+
+  git clone https://github.com/zilliztech/pyglass
+
+  cd pyglass
+  git config --global --add safe.directory /pyglass
+  git reset --hard d2296ec447d2374ee8f88c6d3b85be1b1e434ad3
+
+  pip install -v -e "python"
+
+  cd ..
+
+  git clone https://github.com/jacketsj/mopbucket
+
+  cd mopbucket
+  git config --global --add safe.directory /mopbucket
+  git reset --hard dcda2da26b282b443bad026cf292e7c93d2463d2
+  git submodule update --init --recursive
+
+  ./build.sh
+
+  cd ..
 
   git clone https://github.com/ThirdAIResearch/Dessert
 

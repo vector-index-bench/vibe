@@ -5,214 +5,120 @@ from ..base.module import BaseANN
 
 
 class Chamfer(BaseANN):
-    def __init__(self, metric):
-        if metric != "chamfer":
-            raise ValueError(f"Only 'chamfer' metric is supported, got: {metric}")
-
-        self.metric = metric
-        self.train_counts = None
+    def __init__(self, device):
+        self.train_embeddings = None
+        self.train_mask = None
         self.batch_results = None
+        self.distances = None
+        self.chamfer_scores = None
+        self.device = device
 
-    def fit(self, X):
-        """
-        Fit the index with training data.
-
-        Args:
-            X: Tuple of (embeddings, counts) where:
-                - embeddings: numpy array of shape (total_vectors, dim) containing all vectors concatenated
-                - counts: numpy array of shape (n_docs,) containing the number of vectors per document
-        """
-        embeddings, counts = X
-        self.train_counts = counts
-
-        n_docs = len(counts)
-        max_doc_length = int(np.max(counts))
-        embedding_dim = embeddings.shape[1]
-
-        self.train_embeddings_padded = np.zeros((n_docs, max_doc_length, embedding_dim), dtype=np.float32)
-
-        start_idx = 0
-        for i, count in enumerate(counts):
-            end_idx = start_idx + count
-            self.train_embeddings_padded[i, :count, :] = embeddings[start_idx:end_idx]
-            start_idx = end_idx
-
-    def batch_query(self, X, n):
-        """
-        Perform batch query to find n nearest neighbors for each query.
-
-        Args:
-            X: Tuple of (embeddings, counts) where:
-                - embeddings: numpy array of shape (total_vectors, dim) containing all query vectors concatenated
-                - counts: numpy array of shape (n_queries,) containing the number of vectors per query
-            n: Number of nearest neighbors to return
-        """
-        query_embeddings, query_counts = X
-        n_queries = len(query_counts)
-        n_train = len(self.train_counts)
-
-        chamfer_scores = np.zeros((n_queries, n_train), dtype=np.float32)
-
-        query_start_idx = 0
-        for i, query_count in enumerate(query_counts):
-            query_end_idx = query_start_idx + query_count
-            query_vecs = query_embeddings[query_start_idx:query_end_idx]
-            scores = np.matmul(query_vecs, self.train_embeddings_padded.transpose(0, 2, 1))
-            max_scores_per_query_term = np.max(scores, axis=2)
-            chamfer_scores[i] = np.sum(max_scores_per_query_term, axis=1)
-            query_start_idx = query_end_idx
-
-        indices = np.argsort(-chamfer_scores, axis=1)[:, :n]
-        distances = -np.take_along_axis(chamfer_scores, indices, axis=1)
-
-        self.batch_results = indices
-        self.distances = distances
-        self.chamfer_scores = chamfer_scores
-
-    def batch_query_with_distances(self, X, n, return_avg_dist=False):
-        """
-        Perform batch query to find n nearest neighbors for each query, with optional average distances.
-
-        Args:
-            X: Tuple of (embeddings, counts) where:
-                - embeddings: numpy array of shape (total_vectors, dim) containing all query vectors concatenated
-                - counts: numpy array of shape (n_queries,) containing the number of vectors per query
-            n: Number of nearest neighbors to return
-            return_avg_dist: If True, return average distance to all training documents
-
-        Returns:
-            If return_avg_dist is False:
-                Tuple of (indices, distances)
-            If return_avg_dist is True:
-                Tuple of ((indices, distances), avg_distances)
-        """
-        self.batch_query(X, n)
-        indices = self.batch_results
-        distances = self.distances
-
-        if return_avg_dist:
-            avg_distances = -np.mean(self.chamfer_scores, axis=1)
-            return (indices, distances), avg_distances
-        else:
-            return indices, distances
-
-    def get_batch_results(self):
-        """
-        Return the results from the last batch query.
-
-        Returns:
-            numpy array of shape (n_queries, n) containing indices of nearest neighbors
-        """
-        return self.batch_results
-
-    def __str__(self):
-        return f"Chamfer(metric={self.metric})"
-
-
-class ChamferGPU(BaseANN):
-    def __init__(self, metric):
-        if metric != "chamfer":
-            raise ValueError(f"Only 'chamfer' metric is supported, got: {metric}")
-        self.metric = metric
-        self.train_embeddings_padded = None
-        self.train_counts = None
-        self.batch_results = None
-        self.device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-
-    def fit(self, X):
-        """
-        Fit the index with training data.
-
-        Args:
-            X: Tuple of (embeddings, counts) where:
-                - embeddings: numpy array of shape (total_vectors, dim) containing all vectors concatenated
-                - counts: numpy array of shape (n_docs,) containing the number of vectors per document
-        """
+    def pad_input(self, X):
         embeddings, counts = X
 
-        n_docs = len(counts)
-        max_doc_length = int(np.max(counts))
-        embedding_dim = embeddings.shape[1]
+        if not isinstance(embeddings, np.ndarray):
+            embeddings = np.asarray(embeddings, dtype=np.float32)
+        if embeddings.dtype != np.float32:
+            embeddings = embeddings.astype(np.float32)
 
-        train_embeddings_padded = np.zeros((n_docs, max_doc_length, embedding_dim), dtype=np.float32)
+        if not isinstance(counts, np.ndarray):
+            counts = np.asarray(counts, dtype=np.int64)
+        counts = counts.astype(np.int64, copy=False)
 
-        start_idx = 0
+        n_queries = len(counts)
+        max_len = int(np.max(counts))
+        dim = embeddings.shape[1]
+
+        out = np.zeros((n_queries, max_len, dim), dtype=np.float32)
+
+        start = 0
         for i, count in enumerate(counts):
-            end_idx = start_idx + count
-            train_embeddings_padded[i, :count, :] = embeddings[start_idx:end_idx]
-            start_idx = end_idx
+            out[i, :count, :] = embeddings[start : start + count]
+            start += count
 
-        self.train_embeddings_padded = torch.from_numpy(train_embeddings_padded).to(self.device)
-        self.train_counts = counts
+        return out
+
+    def fit(self, X):
+        embeddings, counts = X
+        self.train_embeddings = torch.from_numpy(self.pad_input((embeddings, counts))).to(self.device)
+        counts_t = torch.as_tensor(counts, device=self.train_embeddings.device)
+
+        self.train_mask = (
+            torch.arange(self.train_embeddings.shape[1], device=counts_t.device)[None, :] < counts_t[:, None]
+        )
+
+        self.doc_mask_bias = torch.where(
+            self.train_mask,
+            torch.zeros(1, dtype=self.train_embeddings.dtype, device=self.train_embeddings.device),
+            torch.full((), float("-inf"), dtype=self.train_embeddings.dtype, device=self.train_embeddings.device),
+        )
+
+    def batch_query_with_distances(self, X, n):
+        return self.batch_query_padded_with_distances(self.pad_input(X), n)
+
+    def batch_query_padded_with_distances(self, X, n):
+        with torch.inference_mode():
+            queries = torch.as_tensor(X)
+            queries = queries.to(self.train_embeddings.device, dtype=self.train_embeddings.dtype)
+            batch_size, _, _ = queries.shape
+
+            query_mask = queries.abs().sum(dim=2) != 0
+
+            docs_T = self.train_embeddings.transpose(1, 2)
+            doc_bias = self.doc_mask_bias
+
+            out_indices = torch.empty((batch_size, n), dtype=torch.long, device=queries.device)
+            out_values = torch.empty((batch_size, n), dtype=queries.dtype, device=queries.device)
+
+            for b in range(batch_size):
+                q_active = queries[b][query_mask[b]]
+                scores = torch.matmul(q_active, docs_T)
+                scores = scores + doc_bias[:, None, :]
+
+                max_per_q = scores.max(dim=2).values
+                total_scores = max_per_q.sum(dim=1)
+                del scores, max_per_q
+
+                nearest = torch.topk(total_scores, n, largest=True)
+                out_indices[b] = nearest.indices
+                out_values[b] = nearest.values
+                del nearest, total_scores
+
+            return out_indices.detach().cpu().numpy(), (-out_values).detach().cpu().numpy()
 
     def batch_query(self, X, n):
-        """
-        Perform batch query to find n nearest neighbors for each query.
+        self.batch_results, _ = self.batch_query_with_distances(X, n)
 
-        Args:
-            X: Tuple of (embeddings, counts) where:
-                - embeddings: numpy array of shape (total_vectors, dim) containing all query vectors concatenated
-                - counts: numpy array of shape (n_queries,) containing the number of vectors per query
-            n: Number of nearest neighbors to return
-        """
-        query_embeddings, query_counts = X
-        n_queries = len(query_counts)
-        n_train = len(self.train_counts)
-
-        chamfer_scores = torch.zeros((n_queries, n_train), dtype=torch.float32, device=self.device)
-
-        query_start_idx = 0
-        for i, query_count in enumerate(query_counts):
-            query_end_idx = query_start_idx + query_count
-            query_vecs = query_embeddings[query_start_idx:query_end_idx]
-            query_vecs_gpu = torch.from_numpy(query_vecs).to(self.device)
-            scores = torch.matmul(query_vecs_gpu, self.train_embeddings_padded.transpose(1, 2))
-            max_scores_per_query_term = torch.max(scores, dim=2)[0]
-            chamfer_scores[i] = torch.sum(max_scores_per_query_term, dim=1)
-            query_start_idx = query_end_idx
-
-        distances, indices = torch.topk(chamfer_scores, k=n, dim=1, largest=True)
-        distances = -distances
-
-        self.batch_results = indices.cpu().numpy()
-        self.distances = distances.cpu().numpy()
-        self.chamfer_scores = chamfer_scores
-
-    def batch_query_with_distances(self, X, n, return_avg_dist=False):
-        """
-        Perform batch query to find n nearest neighbors for each query, with optional average distances.
-
-        Args:
-            X: Tuple of (embeddings, counts) where:
-                - embeddings: numpy array of shape (total_vectors, dim) containing all query vectors concatenated
-                - counts: numpy array of shape (n_queries,) containing the number of vectors per query
-            n: Number of nearest neighbors to return
-            return_avg_dist: If True, return average distance to all training documents
-
-        Returns:
-            If return_avg_dist is False:
-                Tuple of (indices, distances)
-            If return_avg_dist is True:
-                Tuple of ((indices, distances), avg_distances)
-        """
-        self.batch_query(X, n)
-        indices = self.batch_results
-        distances = self.distances
-
-        if return_avg_dist:
-            avg_distances = -torch.mean(self.chamfer_scores, dim=1).cpu().numpy()
-            return (indices, distances), avg_distances
-        else:
-            return indices, distances
+    def batch_query_padded(self, X, n):
+        self.batch_results, _ = self.batch_query_padded_with_distances(X, n)
 
     def get_batch_results(self):
-        """
-        Return the results from the last batch query.
-
-        Returns:
-            numpy array of shape (n_queries, n) containing indices of nearest neighbors
-        """
         return self.batch_results
 
+    def distance_to_indices(self, q, indices):
+        with torch.inference_mode():
+            qt = torch.as_tensor(q)
+            qt = qt.to(self.train_embeddings.device, dtype=self.train_embeddings.dtype)
+
+            q_mask = qt.abs().sum(dim=1) != 0
+            q_active = qt[q_mask]
+
+            idx = torch.as_tensor(indices, dtype=torch.long, device=self.train_embeddings.device)
+
+            if int(idx.numel()) == 0:
+                return []
+
+            docs_T = self.train_embeddings.index_select(0, idx).transpose(1, 2)
+            doc_bias = self.doc_mask_bias.index_select(0, idx)
+
+            scores = torch.matmul(q_active.unsqueeze(0), docs_T)
+            scores = scores + doc_bias[:, None, :]
+
+            max_per_q = scores.max(dim=2).values
+            total_scores = max_per_q.sum(dim=1)
+
+            distances = (-total_scores).detach().cpu().numpy().astype(np.float32)
+            return distances
+
     def __str__(self):
-        return f"ChamferGPU(metric={self.metric})"
+        return "Chamfer()"

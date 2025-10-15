@@ -1,4 +1,4 @@
-float:
+vector:
   chamfer:
   - base_args: ['@metric']
     constructor: DESSERT
@@ -8,5 +8,5 @@ float:
     name: dessert
     run_groups:
       base:
-        args: [[32], [6], [128], [10]]
-        query_args: [[1000, 2000, 4000]]
+        args: [[16, 32, 64], [4, 6], [512, 1024, 2048, 4096]]
+        query_args: [[1, 2, 4], [128, 256, 512, 1024, 2048, 4096, 8192, 16348]]
