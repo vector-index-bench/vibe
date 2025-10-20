@@ -243,7 +243,7 @@ def compute_assignment_sq(
 def faiss_kmeans_code(sample_vecs_l: np.ndarray, n_centroid: int):
     print("build kmeans")
     vec_dim = sample_vecs_l.shape[1]
-    kmeans = faiss.Kmeans(vec_dim, n_centroid, niter=2, gpu=True, verbose=True, seed=123)
+    kmeans = faiss.Kmeans(vec_dim, n_centroid, niter=20, gpu=True, verbose=True, seed=123)
     kmeans.train(sample_vecs_l)
 
     centroids = torch.from_numpy(kmeans.centroids)

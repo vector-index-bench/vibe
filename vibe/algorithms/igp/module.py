@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 import numpy as np
 
 sys.path.append("/multi-vector-retrieval/build")
@@ -22,30 +23,24 @@ class IGPIndex(BaseANN):
         n_item = len(counts)
 
         self.index = IGP.DocRetrieval(
-            item_n_vec_l=counts.tolist(), n_item=n_item, vec_dim=vec_dim, n_centroid=self.n_centroid, n_bit=self.n_bit
+            item_n_vec_l=counts, n_item=n_item, vec_dim=vec_dim, n_centroid=self.n_centroid, n_bit=self.n_bit
         )
-
-        import tempfile
 
         self.index_path = tempfile.mkdtemp(prefix="igp_index_", dir=".")
 
         self._build_and_save_index(embeddings, counts)
-        self._try_load_index()
+        self._load_index()
 
-    def _try_load_index(self):
-        required_files = ["centroid_l.npy", "vq_code_l.npy", "weight_l.npy", "residual_code_l.npy", "index.hnsw"]
-        if all(os.path.exists(os.path.join(self.index_path, f)) for f in required_files):
-            centroid_l = np.load(os.path.join(self.index_path, "centroid_l.npy"))
-            vq_code_l = np.load(os.path.join(self.index_path, "vq_code_l.npy"))
-            weight_l = np.load(os.path.join(self.index_path, "weight_l.npy"))
-            residual_code_l = np.load(os.path.join(self.index_path, "residual_code_l.npy"))
+    def _load_index(self):
+        centroid_l = np.load(os.path.join(self.index_path, "centroid_l.npy"))
+        vq_code_l = np.load(os.path.join(self.index_path, "vq_code_l.npy"))
+        weight_l = np.load(os.path.join(self.index_path, "weight_l.npy"))
+        residual_code_l = np.load(os.path.join(self.index_path, "residual_code_l.npy"))
 
-            self.index.load_quantization_index(
-                centroid_l=centroid_l, vq_code_l=vq_code_l, weight_l=weight_l, residual_code_l=residual_code_l
-            )
-            self.index.load_graph_index(os.path.join(self.index_path, "index.hnsw"))
-            return True
-        return False
+        self.index.load_quantization_index(
+            centroid_l=centroid_l, vq_code_l=vq_code_l, weight_l=weight_l, residual_code_l=residual_code_l
+        )
+        self.index.load_graph_index(os.path.join(self.index_path, "index.hnsw"))
 
     def _build_and_save_index(self, embeddings, counts):
         from .vq import vq_sq_ivf
@@ -73,7 +68,7 @@ class IGPIndex(BaseANN):
     def query(self, v, n):
         query_l = v.reshape(1, v.shape[0], v.shape[1])
         result = self.index.search(query_l=query_l, topk=n, nprobe=self.nprobe, probe_topk=self.probe_topk)
-        return result[1][0].tolist()
+        return result[1][0]
 
     def batch_query(self, X, n):
         result = self.index.search(query_l=X, topk=n, nprobe=self.nprobe, probe_topk=self.probe_topk)

@@ -5,7 +5,27 @@ From: base.sif
   mkdir -p /cache
   export TMPDIR=/cache
 
-  pip install --no-cache-dir torch==2.8.0 fastembed==0.7.3
+  pip install --no-cache-dir torch==2.8.0
+
+  git clone https://github.com/ejaasaari/chamfer
+
+  cd /chamfer
+  git config --global --add safe.directory /chamfer
+  git reset --hard 2a781d4de5605b00bcb8459670d16230d9491b75
+
+  pip install .
+
+  cd ..
+
+  git clone https://github.com/ejaasaari/muvera
+
+  cd /muvera
+  git config --global --add safe.directory /muvera
+  git reset --hard 4682ac93c543c1ebbce027619e3be2d79b2859e7
+
+  pip install .
+
+  cd ..
 
   git clone https://github.com/zilliztech/pyglass
 
