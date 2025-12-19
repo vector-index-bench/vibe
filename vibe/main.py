@@ -39,6 +39,29 @@ def positive_int(input_str: str) -> int:
     return i
 
 
+def nonnegative_int(input_str: str) -> int:
+    """
+    Validates if the input string can be converted to a non-negative integer.
+
+    Args:
+        input_str (str): The input string to validate and convert to a non-negative integer.
+
+    Returns:
+        int: The validated non-negative integer.
+
+    Raises:
+        argparse.ArgumentTypeError: If the input string cannot be converted to a non-negative integer.
+    """
+    try:
+        i = int(input_str)
+        if i < 0:
+            raise ValueError
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{input_str} is not a non-negative integer")
+
+    return i
+
+
 def filter_disabled_algorithms(definitions: List[Definition]) -> List[Definition]:
     """
     Excludes disabled algorithms from the given list of definitions.
@@ -189,7 +212,10 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("--run-disabled", help="run algorithms that are disabled in algos.yml", action="store_true")
     parser.add_argument(
-        "--parallelism", type=positive_int, help="Number of indexes to benchmark in parallel", default=1
+        "--parallelism",
+        type=nonnegative_int,
+        help="Number of indexes to benchmark in parallel (0 = single worker with no core pinning)",
+        default=1,
     )
 
     args = parser.parse_args()
@@ -197,7 +223,7 @@ def parse_arguments() -> argparse.Namespace:
     if args.timeout == -1:
         args.timeout = None
 
-    if args.gpu:
+    if args.gpu and args.parallelism != 0:
         args.parallelism = 1
 
     return args

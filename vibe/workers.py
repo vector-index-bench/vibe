@@ -191,9 +191,10 @@ def run_singularity(
     count: int,
     runs: int,
     timeout: int,
-    cpu: int,
+    cpu: Optional[int],
     local: bool,
     terminate_evt,
+    pin_cpu: bool,
 ) -> None:
     """Runs `run_from_cmdline` within a Singularity container with specified parameters and logs the output.
 
@@ -202,44 +203,50 @@ def run_singularity(
     if terminate_evt.is_set():
         return
 
-    logger = logging.getLogger(f"vibe.worker.{cpu}")
+    logger_name = f"vibe.worker.{cpu}" if pin_cpu else "vibe.worker.all"
+    logger = logging.getLogger(logger_name)
 
-    gov_path = Path(f"/sys/devices/system/cpu/cpu{cpu}/cpufreq/scaling_governor")
-    if gov_path.exists() and gov_path.read_text().strip() != "performance":
-        logger.warning(f"Core {cpu} not in performance mode")
+    if pin_cpu:
+        if cpu is None:
+            logger.error("Pinned worker missing CPU assignment")
+            return
+        gov_path = Path(f"/sys/devices/system/cpu/cpu{cpu}/cpufreq/scaling_governor")
+        if gov_path.exists() and gov_path.read_text().strip() != "performance":
+            logger.warning(f"Core {cpu} not in performance mode")
 
     cmd = []
 
-    node = get_numa_node_for_cpu(cpu)
-    allowed = allowed_mems()
+    if pin_cpu:
+        node = get_numa_node_for_cpu(cpu)
+        allowed = allowed_mems()
 
-    if allowed is None:
-        logger.error("No allowed memory nodes")
-        return
+        if allowed is None:
+            logger.error("No allowed memory nodes")
+            return
 
-    def _nearest_allowed_node(src_node: int, allowed_nodes: Set[int]) -> int:
-        dist_path = Path(f"/sys/devices/system/node/node{src_node}/distance")
-        if not allowed_nodes:
-            raise RuntimeError("nearest_allowed_node called with empty allowed_nodes")
-        if not dist_path.exists():
-            return min(allowed_nodes)
-        distances = [int(x) for x in dist_path.read_text().split()]
-        valid_allowed = {n for n in allowed_nodes if 0 <= n < len(distances)}
-        if not valid_allowed:
-            return min(allowed_nodes)
-        return min(valid_allowed, key=lambda n: (distances[n], n))
+        def _nearest_allowed_node(src_node: int, allowed_nodes: Set[int]) -> int:
+            dist_path = Path(f"/sys/devices/system/node/node{src_node}/distance")
+            if not allowed_nodes:
+                raise RuntimeError("nearest_allowed_node called with empty allowed_nodes")
+            if not dist_path.exists():
+                return min(allowed_nodes)
+            distances = [int(x) for x in dist_path.read_text().split()]
+            valid_allowed = {n for n in allowed_nodes if 0 <= n < len(distances)}
+            if not valid_allowed:
+                return min(allowed_nodes)
+            return min(valid_allowed, key=lambda n: (distances[n], n))
 
-    if shutil.which("numactl"):
-        if node is not None and (allowed is None or node in allowed):
-            cmd += ["numactl", f"--membind={node}"]
-        elif allowed:
-            base = node if node is not None else 0
-            nearest = _nearest_allowed_node(base, allowed)
-            cmd += ["numactl", f"--membind={nearest}"]
-        cmd += [f"--physcpubind={cpu}"]
-    else:
-        logger.warning("numactl not found; falling back to taskset (no NUMA policy).")
-        cmd += ["taskset", "-c", str(cpu)]
+        if shutil.which("numactl"):
+            if node is not None and (allowed is None or node in allowed):
+                cmd += ["numactl", f"--membind={node}"]
+            elif allowed:
+                base = node if node is not None else 0
+                nearest = _nearest_allowed_node(base, allowed)
+                cmd += ["numactl", f"--membind={nearest}"]
+            cmd += [f"--physcpubind={cpu}"]
+        else:
+            logger.warning("numactl not found; falling back to taskset (no NUMA policy).")
+            cmd += ["taskset", "-c", str(cpu)]
 
     if not local:
         cmd += ["singularity", "exec"]
@@ -271,26 +278,30 @@ def run_singularity(
     cmd.append(json.dumps(definition.arguments))
     cmd += [json.dumps(qag) for qag in definition.query_argument_groups]
 
-    env = dict(
-        os.environ,
-        OMP_NUM_THREADS="1",
-        MKL_NUM_THREADS="1",
-        OPENBLAS_NUM_THREADS="1",
-        TBB_NUM_THREADS="1",
-        NUMEXPR_NUM_THREADS="1",
-        VECLIB_NUM_THREADS="1",
-        BLIS_NUM_THREADS="1",
-        GOTO_NUM_THREADS="1",
-        NUMBA_NUM_THREADS="1",
-        JULIA_NUM_THREADS="1",
-        RAYON_NUM_THREADS="1",
-        OMP_PROC_BIND="true",
-        OMP_DYNAMIC="false",
-        MKL_DYNAMIC="false",
-    )
+    if pin_cpu:
+        env = dict(
+            os.environ,
+            OMP_NUM_THREADS="1",
+            MKL_NUM_THREADS="1",
+            OPENBLAS_NUM_THREADS="1",
+            TBB_NUM_THREADS="1",
+            NUMEXPR_NUM_THREADS="1",
+            VECLIB_NUM_THREADS="1",
+            BLIS_NUM_THREADS="1",
+            GOTO_NUM_THREADS="1",
+            NUMBA_NUM_THREADS="1",
+            JULIA_NUM_THREADS="1",
+            RAYON_NUM_THREADS="1",
+            OMP_PROC_BIND="true",
+            OMP_DYNAMIC="false",
+            MKL_DYNAMIC="false",
+        )
+    else:
+        env = dict(os.environ)
 
     def set_affinity_before_exec():
-        os.sched_setaffinity(0, {cpu})
+        if pin_cpu and cpu is not None:
+            os.sched_setaffinity(0, {cpu})
 
     try:
         with subprocess.Popen(
@@ -302,7 +313,7 @@ def run_singularity(
             bufsize=1,
             start_new_session=True,
             close_fds=True,
-            preexec_fn=set_affinity_before_exec,
+            preexec_fn=set_affinity_before_exec if pin_cpu else None,
         ) as p:
             pgid = p.pid
 
@@ -413,7 +424,7 @@ def run_singularity(
         return
 
 
-def run_worker(cpu, args, queue, terminate_evt) -> None:
+def run_worker(cpu, args, queue, terminate_evt, pin_cpu: bool) -> None:
     logger = logging.getLogger("vibe")
 
     try:
@@ -436,6 +447,7 @@ def run_worker(cpu, args, queue, terminate_evt) -> None:
                     cpu,
                     args.local,
                     terminate_evt=terminate_evt,
+                    pin_cpu=pin_cpu,
                 )
             except Exception as e:
                 logger.warning(f"Worker failed on CPU {cpu}: {e}")
@@ -504,23 +516,29 @@ def create_workers_and_execute(definitions: List[Definition], args: argparse.Nam
         raise RuntimeError("No available CPU cores")
 
     reserved_cpus, worker_cpus = reserve_one_core_per_numa(cores)
+    pin_cpu = args.parallelism != 0
 
-    os.sched_setaffinity(0, set(reserved_cpus))
+    if pin_cpu:
+        os.sched_setaffinity(0, set(reserved_cpus))
 
-    if args.parallelism > len(worker_cpus):
-        raise Exception(
-            f"Parallelism ({args.parallelism}) > usable physical cores ({len(worker_cpus)}); "
-            f"reserved {len(reserved_cpus)} core(s), one per NUMA node"
-        )
+        if args.parallelism > len(worker_cpus):
+            raise Exception(
+                f"Parallelism ({args.parallelism}) > usable physical cores ({len(worker_cpus)}); "
+                f"reserved {len(reserved_cpus)} core(s), one per NUMA node"
+            )
 
-    num_workers = min(args.parallelism, len(worker_cpus), len(definitions))
+        num_workers = min(args.parallelism, len(worker_cpus), len(definitions))
+        worker_assignments = worker_cpus[:num_workers]
+    else:
+        num_workers = 1 if definitions else 0
+        worker_assignments = [None] * num_workers
 
     terminate_evt = multiprocessing.Event()
     task_queue = multiprocessing.Queue()
 
     procs = []
-    for cpu in worker_cpus[:num_workers]:
-        p = multiprocessing.Process(target=run_worker, args=(cpu, args, task_queue, terminate_evt))
+    for cpu in worker_assignments:
+        p = multiprocessing.Process(target=run_worker, args=(cpu, args, task_queue, terminate_evt, pin_cpu))
         p.start()
         procs.append(p)
 
