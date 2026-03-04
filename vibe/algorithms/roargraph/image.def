@@ -14,4 +14,4 @@ From: base.sif
   cd pyroar
   sed -i '/faiss/d' index_bindings.cpp
   sed -i '/faiss/d' setup.py
-  pip install .
+  pip install . --no-build-isolation
