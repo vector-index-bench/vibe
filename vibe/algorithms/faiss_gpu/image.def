@@ -2,4 +2,5 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  micromamba install -c conda-forge -c pytorch -c nvidia faiss-gpu=1.12.0
+  micromamba install -y -q -c conda-forge -c pytorch -c nvidia -c https://software.repos.intel.com/python/conda faiss-gpu=1.14.0 libsvs-runtime=0.1.0
+  micromamba clean --all --yes

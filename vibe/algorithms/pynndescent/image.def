@@ -6,4 +6,4 @@ From: base.sif
   export NUMBA_CACHE_DIR
 
 %post
-  pip install --no-cache-dir pynndescent==0.5.13
+  pip install --no-cache-dir pynndescent==0.6.0
