@@ -111,6 +111,25 @@ float:
         args: [[4096], [1]]
         query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512], [0, 2, 4, 8, 16]]
   - base_args: ['@metric']
+    constructor: FaissIVFTurboQuant
+    disabled: true
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: ivf-turboquant(faiss)
+    run_groups:
+      base-512:
+        args: [[512], [1, 2, 3, 4, 8]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64], [0, 2, 4, 8, 16]]
+      base-1024:
+        args: [[1024], [1, 2, 3, 4, 8]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128], [0, 2, 4, 8, 16]]
+      base-2048:
+        args: [[2048], [1, 2, 3, 4, 8]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256], [0, 2, 4, 8, 16]]
+      base-4096:
+        args: [[4096], [1, 2, 3, 4, 8]]
+        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512], [0, 2, 4, 8, 16]]
+  - base_args: ['@metric']
     constructor: FaissIVFPQfs
     disabled: false
     singularity_image: faiss
