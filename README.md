@@ -207,22 +207,22 @@ Add your algorithm in the folder `vibe/algorithms/{METHOD}/` by providing
 | [ANNOY](https://github.com/spotify/annoy) | 1.17.3 |
 | [FALCONN++](https://github.com/NinhPham/FalconnPP) | git+5fd3f17 |
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
-| [CAGRA](https://github.com/rapidsai/cuvs) | 25.08.00 |
+| [CAGRA](https://github.com/rapidsai/cuvs) | 26.04.00 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
-| [GLASS](https://github.com/zilliztech/pyglass) | git+8c69018 |
+| [GLASS](https://github.com/zilliztech/pyglass) | git+d2296ec |
 | [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
-| [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.12.0 |
-| [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.12.0 |
-| [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.9 |
-| [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.0.9 |
-| [LoRANN](https://github.com/ejaasaari/lorann) | 0.4 |
-| [MLANN](https://github.com/ejaasaari/mlann) | git+f5d966b |
+| [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.2 |
+| [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.2 |
+| [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.3.0 |
+| [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.3.0 |
+| [LoRANN](https://github.com/ejaasaari/lorann) | 0.4.4 |
+| [MLANN](https://github.com/ejaasaari/mlann) | git+bb7f3e3 |
 | [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.2 |
-| [NGT-ONNG](https://github.com/yahoojapan/NGT/) | 2.4.5 |
-| [NGT-QG](https://github.com/yahoojapan/NGT/) | 2.4.5 |
-| [NSG](https://github.com/facebookresearch/faiss) | 1.12.0 |
+| [NGT-ONNG](https://github.com/yahoojapan/NGT/) | 2.7.4 |
+| [NGT-QG](https://github.com/yahoojapan/NGT/) | 2.7.4 |
+| [NSG](https://github.com/facebookresearch/faiss) | 1.14.2 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
-| [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.5.13 |
+| [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.6.0 |
 | [RoarGraph](https://github.com/matchyc/RoarGraph) | git+f2b49b6 |
 | [ScaNN](https://github.com/google-research/google-research/tree/master/scann) | 1.4.2 |
 | [SymphonyQG](https://github.com/gouyt13/SymphonyQG) | git+32a0019 |
