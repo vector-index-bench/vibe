@@ -271,7 +271,15 @@ def generate_arg_combinations(run_group: Dict[str, Any], arg_type: str) -> List:
                 groups.append(arg_group)
         return _generate_combinations(groups)
     elif arg_type in ["args", "query_args"]:
-        return _generate_combinations(run_group[arg_type])
+        arg_spec = run_group[arg_type]
+        combinations = _generate_combinations(arg_spec)
+        if isinstance(arg_spec, dict):
+            return [list(combination.values()) for combination in combinations]
+
+        return [
+            [list(arg.values()) if isinstance(arg, dict) else arg for arg in combination]
+            for combination in combinations
+        ]
     else:
         return []
 

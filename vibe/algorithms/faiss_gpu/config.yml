@@ -9,20 +9,35 @@ float:
     name: faiss-gpu-ivf
     run_groups:
       base-512:
-        args: [[512], [0, 1]]
-        query_args: [[1, 2, 4, 8, 16, 32, 64]]
+        args:
+          n_list: [512]
+          float16: [0, 1]
+        query_args:
+          n_probe: [1, 2, 4, 8, 16, 32, 64]
       base-1024:
-        args: [[1024], [0, 1]]
-        query_args: [[1, 2, 4, 8, 16, 32, 64, 128]]
+        args:
+          n_list: [1024]
+          float16: [0, 1]
+        query_args:
+          n_probe: [1, 2, 4, 8, 16, 32, 64, 128]
       base-2048:
-        args: [[2048], [0, 1]]
-        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256]]
+        args:
+          n_list: [2048]
+          float16: [0, 1]
+        query_args:
+          n_probe: [1, 2, 4, 8, 16, 32, 64, 128, 256]
       base-4096:
-        args: [[4096], [0, 1]]
-        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]]
+        args:
+          n_list: [4096]
+          float16: [0, 1]
+        query_args:
+          n_probe: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
       base-8192:
-        args: [[8192], [0, 1]]
-        query_args: [[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]]
+        args:
+          n_list: [8192]
+          float16: [0, 1]
+        query_args:
+          n_probe: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
   - base_args: ['@metric']
     constructor: FaissGPUIVFPQ
     disabled: true
@@ -32,14 +47,26 @@ float:
     name: faiss-gpu-ivfpq
     run_groups:
       base-512:
-        args: [[512], [20, 56, 64, 96]]
-        query_args: [[4, 8, 16, 32, 64]]
+        args:
+          n_list: [512]
+          code_size: [20, 56, 64, 96]
+        query_args:
+          n_probe: [4, 8, 16, 32, 64]
       base-1024:
-        args: [[1024], [20, 56, 64, 96]]
-        query_args: [[4, 8, 16, 32, 64, 128]]
+        args:
+          n_list: [1024]
+          code_size: [20, 56, 64, 96]
+        query_args:
+          n_probe: [4, 8, 16, 32, 64, 128]
       base-2048:
-        args: [[2048], [20, 56, 64, 96]]
-        query_args: [[4, 8, 16, 32, 64, 128, 256]]
+        args:
+          n_list: [2048]
+          code_size: [20, 56, 64, 96]
+        query_args:
+          n_probe: [4, 8, 16, 32, 64, 128, 256]
       base-4096:
-        args: [[4096], [20, 56, 64, 96]]
-        query_args: [[4, 8, 16, 32, 64, 128, 256, 512]]
+        args:
+          n_list: [4096]
+          code_size: [20, 56, 64, 96]
+        query_args:
+          n_probe: [4, 8, 16, 32, 64, 128, 256, 512]

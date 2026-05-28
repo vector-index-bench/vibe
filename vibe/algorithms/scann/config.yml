@@ -8,14 +8,29 @@ float:
     name: scann
     run_groups:
       scann-512:
-        args: [[512], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [512]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-1024:
-        args: [[1024], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [1024]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-2048:
-        args: [[2048], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [2048]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128, 256]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
   ip:
   - base_args: ['@metric']
     constructor: Scann
@@ -25,14 +40,29 @@ float:
     name: scann
     run_groups:
       scann-512:
-        args: [[512], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [512]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-1024:
-        args: [[1024], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [1024]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-2048:
-        args: [[2048], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [2048]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128, 256]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
   normalized:
   - base_args: ['@metric']
     constructor: Scann
@@ -42,14 +72,29 @@ float:
     name: scann
     run_groups:
       scann-512:
-        args: [[512], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [512]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-1024:
-        args: [[1024], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [1024]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-2048:
-        args: [[2048], [.nan, 0.10, 0.25, 0.40, 0.55], [2, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [2048]
+          avq_threshold: [.nan, 0.1, 0.25, 0.4, 0.55]
+          dims_per_block: [2, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128, 256]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
   euclidean:
   - base_args: ['@metric']
     constructor: Scann
@@ -59,11 +104,26 @@ float:
     name: scann
     run_groups:
       scann-512:
-        args: [[512], [.nan], [1, 2, 3, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [512]
+          avq_threshold: [.nan]
+          dims_per_block: [1, 2, 3, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-1024:
-        args: [[1024], [.nan], [1, 2, 3, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [1024]
+          avq_threshold: [.nan]
+          dims_per_block: [1, 2, 3, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
       scann-2048:
-        args: [[2048], [.nan], [1, 2, 3, 4]]
-        query_args: [[2, 4, 8, 16, 32, 64, 128, 256], [100, 200, 300, 400, 600, 800, 1000]]
+        args:
+          n_leaves: [2048]
+          avq_threshold: [.nan]
+          dims_per_block: [1, 2, 3, 4]
+        query_args:
+          leaves_to_search: [2, 4, 8, 16, 32, 64, 128, 256]
+          reorder: [100, 200, 300, 400, 600, 800, 1000]
