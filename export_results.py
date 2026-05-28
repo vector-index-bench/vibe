@@ -51,7 +51,11 @@ def export_results(path, data_dir):
                 times = hfp[query_params]["times"][:]
                 n_queries = len(times)
                 recalls = hfp[query_params]["recalls"][:] / k
-                qps = 1 / hfp[query_params].attrs["best_search_time"]
+                qps = (
+                    hfp[query_params].attrs["best_qps"]
+                    if "best_qps" in hfp[query_params].attrs
+                    else 1 / hfp[query_params].attrs["best_search_time"]
+                )
                 build_time = hfp[query_params].attrs["build_time"]
                 index_size = hfp[query_params].attrs["index_size"]
                 summary = dict(

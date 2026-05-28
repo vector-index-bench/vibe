@@ -31,6 +31,7 @@ def run_individual_query(
     prepared_queries = hasattr(algo, "prepare_query")
 
     best_search_time = float("inf")
+    best_qps = 0.0
     for i in range(run_count):
         print("Run %d/%d..." % (i + 1, run_count))
 
@@ -69,16 +70,16 @@ def run_individual_query(
                 )
             return (total, candidates)
 
-        def batch_query(X) -> List[Tuple[float, List[Tuple[int, float]]]]:
+        def batch_query(X) -> Tuple[List[Tuple[float, List[Tuple[int, float]]]], float]:
             """Executes a batch of queries on an instantiated, ANN algorithm.
 
             Args:
                 X (numpy.array): Array containing multiple vectors to query.
 
             Returns:
-                List[Tuple[float, List[Tuple[int, float]]]]: List of tuples, each containing
-                    1. Total time taken for each query
-                    2. Result pairs consisting of (point index, distance to candidate data )
+                Tuple containing:
+                    1. List of per-query results, where each item contains query time and result pairs.
+                    2. Total batch wall-clock time.
             """
             if prepared_queries:
                 algo.prepare_batch_query(X, count)
@@ -102,23 +103,30 @@ def run_individual_query(
                 ]
                 for v, single_results in zip(X, results)
             ]
-            return [(latency, v) for latency, v in zip(batch_latencies, candidates)]
+            return [(latency, v) for latency, v in zip(batch_latencies, candidates)], total
 
         if gpu:
-            results = batch_query(X_test)
+            results, total = batch_query(X_test)
         else:
             results = [single_query(x) for x in X_test]
+            total = None
 
         total_time = sum(time for time, _ in results)
         total_candidates = sum(len(candidates) for _, candidates in results)
         search_time = total_time / len(X_test)
         avg_candidates = total_candidates / len(X_test)
         best_search_time = min(best_search_time, search_time)
+        if total is None:
+            qps = 1.0 / search_time
+        else:
+            qps = len(X_test) / total
+        best_qps = max(best_qps, qps)
 
     verbose = hasattr(algo, "query_verbose")
     attrs = {
         "gpu_mode": gpu,
         "best_search_time": best_search_time,
+        "best_qps": best_qps,
         "candidates": avg_candidates,
         "expect_extra": verbose,
         "name": str(algo),
