@@ -1192,7 +1192,9 @@ if __name__ == "__main__":
         normalize_names
     )
     query_stats = pl.read_parquet(data_dir / "stats.parquet").with_columns(normalize_names)
-    pca_mahalanobis = pl.read_parquet(data_dir / "data-pca-mahalanobis.parquet").with_columns(normalize_names)
+    pca_mahalanobis = None
+    if args.pca or args.plot_type in {"performance-gap", "paper"}:
+        pca_mahalanobis = pl.read_parquet(data_dir / "data-pca-mahalanobis.parquet").with_columns(normalize_names)
 
     datasets = args.dataset.split(",")
     count = int(args.count)
