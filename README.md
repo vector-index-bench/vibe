@@ -211,16 +211,16 @@ Add your algorithm in the folder `vibe/algorithms/{METHOD}/` by providing
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
 | [GLASS](https://github.com/zilliztech/pyglass) | git+d2296ec |
 | [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
-| [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.2 |
-| [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.2 |
-| [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.3.0 |
-| [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.3.0 |
-| [LoRANN](https://github.com/ejaasaari/lorann) | 0.4.4 |
-| [MLANN](https://github.com/ejaasaari/mlann) | git+bb7f3e3 |
-| [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.2 |
+| [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
+| [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
+| [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
+| [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
+| [LoRANN](https://github.com/ejaasaari/lorann) | 0.4.5 |
+| [MLANN](https://github.com/ejaasaari/mlann) | git+ba141b4 |
+| [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.4 |
 | [NGT-ONNG](https://github.com/yahoojapan/NGT/) | 2.7.4 |
 | [NGT-QG](https://github.com/yahoojapan/NGT/) | 2.7.4 |
-| [NSG](https://github.com/facebookresearch/faiss) | 1.14.2 |
+| [NSG](https://github.com/facebookresearch/faiss) | 1.14.3 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.6.0 |
 | [RoarGraph](https://github.com/matchyc/RoarGraph) | git+f2b49b6 |
