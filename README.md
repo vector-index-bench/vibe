@@ -34,6 +34,9 @@ E. Jääsaari, V. Hyvönen, M. Ceccarello, T. Roos, M. Aumüller. [VIBE: Vector 
 ### Authors
 VIBE is maintained by [Elias Jääsaari](https://github.com/ejaasaari), [Matteo Ceccarello](https://github.com/Cecca), and [Martin Aumüller](https://github.com/maumueller).
 
+### Alternative Benchmarks
+Please check out [big-ann-benchmarks](https://github.com/harsha-simhadri/big-ann-benchmarks/) (NeurIPS 2021/2023) for the state-of-the-art in billion-scale ANN and constrained ANN, such as ANN under filtered or sparse workloads.
+
 ### Credits
 The evaluation code and some algorithm implementations in VIBE are based on the [ann-benchmarks](https://github.com/erikbern/ann-benchmarks/) project.
 
