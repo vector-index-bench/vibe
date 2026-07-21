@@ -16,9 +16,12 @@ From: base.sif
   meson install -C build
   cd ..
 
-  git clone -b main https://github.com/NGT-labs/ngt.git
+  git clone https://github.com/NGT-labs/ngt.git
+  git config --global --add safe.directory /ngt
 
   cd ngt
+  git reset --hard d46c0e46d46cdb698ba10884323e90c2901b3f57
+
   mkdir build
   cd build
   cmake -DNGTQG_NO_ROTATION=ON -DNGTQG_ZERO_GLOBAL=ON -DNGTQG_X86SIMDSORT=ON -DNGT_DISABLE_NORMALIZATION_ERROR_CHECK=ON ..
