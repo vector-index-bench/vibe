@@ -3,18 +3,26 @@ From: base.sif
 
 %post
   apt install -y --no-install-recommends libblas-dev liblapack-dev
+  pip install --no-cache-dir meson ninja
 
-  git clone -b main https://github.com/yahoojapan/ngt.git
+  git clone https://github.com/intel/x86-simd-sort.git
+  git config --global --add safe.directory /x86-simd-sort
+
+  cd x86-simd-sort
+  git fetch --tags
+  git checkout v7.0
+  meson setup build -Dbuildtype=release
+  ninja -C build
+  meson install -C build
+  cd ..
+
+  git clone -b main https://github.com/NGT-labs/ngt.git
 
   cd ngt
-
-  git config --global --add safe.directory /ngt
-  git reset --hard e1ef561717767df8305a39735c6132e7dcb17260
-
   mkdir build
   cd build
-  cmake -DNGTQG_NO_ROTATION=ON -DNGTQG_ZERO_GLOBAL=ON ..
-  make -j && make install
+  cmake -DNGTQG_NO_ROTATION=ON -DNGTQG_ZERO_GLOBAL=ON -DNGTQG_X86SIMDSORT=ON -DNGT_DISABLE_NORMALIZATION_ERROR_CHECK=ON ..
+  make -j 4 && make install
   cd ..
 
   ldconfig
