@@ -61,9 +61,9 @@ float:
       lorann:
         args:
           quantization_bits: [8]
-          n_clusters: [1024, 2048]
-          global_dim: [96, 128, 192, 256, 384]
-          rank: [32]
+          n_clusters: [2048, 4096]
+          global_dim: [128, 256, 384, 512]
+          rank: [32, 64]
           train_size: [5]
         query_args:
         - - {clusters_to_search: 8, points_to_rerank: 100}
@@ -98,3 +98,7 @@ float:
           - {clusters_to_search: 256, points_to_rerank: 3200}
           - {clusters_to_search: 256, points_to_rerank: 4000}
           - {clusters_to_search: 256, points_to_rerank: 4800}
+          - {clusters_to_search: 512, points_to_rerank: 3200}
+          - {clusters_to_search: 512, points_to_rerank: 4000}
+          - {clusters_to_search: 512, points_to_rerank: 4800}
+          - {clusters_to_search: 512, points_to_rerank: 5600}
