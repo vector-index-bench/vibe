@@ -1,0 +1,15 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  git clone https://github.com/VectorDB-NTU/RaBitQ-Library.git /RaBitQ-Library
+
+  cd /RaBitQ-Library
+  git config --global --add safe.directory /RaBitQ-Library
+  git reset --hard 5ea4df06b8dc5de3889f16084f93544f55c77212
+
+  micromamba install -y -q -c conda-forge -c pytorch python=3.12 faiss-cpu=1.14.3
+  micromamba clean --all --yes
+
+  pip install --no-cache-dir scikit-build-core
+  pip install --no-cache-dir --no-build-isolation --no-deps .

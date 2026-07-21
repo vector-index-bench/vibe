@@ -1,0 +1,70 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: RabitqIVF
+    disabled: false
+    singularity_image: rabitq
+    module: vibe.algorithms.rabitq
+    name: rabitq-ivf
+    run_groups:
+      base-512:
+        args:
+          num_clusters: [512]
+          total_bits: [4, 5, 8]
+          fast_quantization: [true]
+        query_args:
+          nprobe: [1, 2, 4, 8, 16, 32, 64]
+          high_accuracy: [true]
+      base-1024:
+        args:
+          num_clusters: [1024]
+          total_bits: [4, 5, 8]
+          fast_quantization: [true]
+        query_args:
+          nprobe: [1, 2, 4, 8, 16, 32, 64, 128]
+          high_accuracy: [true]
+      base-2048:
+        args:
+          num_clusters: [2048]
+          total_bits: [4, 5, 8]
+          fast_quantization: [true]
+        query_args:
+          nprobe: [1, 2, 4, 8, 16, 32, 64, 128, 256]
+          high_accuracy: [true]
+      base-4096:
+        args:
+          num_clusters: [4096]
+          total_bits: [4, 5, 8]
+          fast_quantization: [true]
+        query_args:
+          nprobe: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+          high_accuracy: [true]
+  - base_args: ['@metric']
+    constructor: RabitqHNSW
+    disabled: false
+    singularity_image: rabitq
+    module: vibe.algorithms.rabitq
+    name: rabitq-hnsw
+    run_groups:
+      base:
+        args:
+          num_clusters: [16, 32]
+          M: [16, 32, 64]
+          efConstruction: [400]
+          total_bits: [4, 5, 8]
+          fast_quantization: [false]
+        query_args:
+          ef: [10, 20, 40, 80, 100, 200, 300, 400, 500, 600, 800, 1000]
+  - base_args: ['@metric']
+    constructor: SymphonyQG
+    disabled: true
+    singularity_image: rabitq
+    module: vibe.algorithms.rabitq
+    name: symqg
+    run_groups:
+      base:
+        args:
+          max_degree: [32, 64, 96, 128]
+          efConstruction: [400]
+        query_args:
+          ef: [100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 1000, 1500, 2000]
