@@ -29,6 +29,38 @@ class cuVSBruteForce(BaseANN):
         return "cuVSBruteForce()"
 
 
+class cuVSBruteForceBatch(BaseANN):
+    def __init__(self, metric, query_batch_size=16384):
+        self.metric = {
+            "euclidean": "sqeuclidean",
+            "cosine": "cosine",
+            "ip": "inner_product",
+            "normalized": "inner_product",
+        }[metric]
+        self.query_batch_size = query_batch_size
+
+    def fit(self, X):
+        self.dataset = cp.asarray(X, dtype=cp.float32)
+        self.index = brute_force.build(self.dataset, metric=self.metric)
+
+    def batch_query(self, X, n):
+        n_queries = X.shape[0]
+        self.res = np.empty((n_queries, n), dtype=np.uint32)
+
+        for start in range(0, n_queries, self.query_batch_size):
+            end = min(start + self.query_batch_size, n_queries)
+            X_batch = cp.asarray(X[start:end], dtype=cp.float32)
+            _, ids = brute_force.search(self.index, X_batch, n)
+            self.res[start:end] = cp.asarray(ids, dtype=cp.uint32).get()
+            del X_batch, ids
+
+    def get_batch_results(self):
+        return self.res
+
+    def __str__(self):
+        return f"cuVSBruteForce(query_batch_size={self.query_batch_size})"
+
+
 class cuVSIVF(BaseANN):
     def __init__(self, metric, n_lists):
         self.metric = {
