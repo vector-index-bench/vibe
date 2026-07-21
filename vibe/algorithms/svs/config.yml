@@ -25,7 +25,7 @@ float:
   any:
   - base_args: ['@metric']
     constructor: SVSVamana
-    disabled: false
+    disabled: true
     singularity_image: svs
     module: vibe.algorithms.svs
     name: vamana(svs)
