@@ -320,7 +320,12 @@ class FaissIVFRaBitQ(Faiss):
             self.index = self.refine_index
 
     def __str__(self):
-        return "FaissIVFRaBitQ(n_list=%d, n_bits=%d, n_probe=%d, k_factor=%d)" % (self.n_list, self.n_bits, self.n_probe, self.k_factor)
+        return "FaissIVFRaBitQ(n_list=%d, n_bits=%d, n_probe=%d, k_factor=%d)" % (
+            self.n_list,
+            self.n_bits,
+            self.n_probe,
+            self.k_factor,
+        )
 
 
 class FaissIVFTurboQuant(Faiss):

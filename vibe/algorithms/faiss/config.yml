@@ -92,7 +92,7 @@ uint8:
     run_groups:
       base:
         args:
-          degree: [4, 8, 12, 16, 24, 36, 48, 64, 96]
+          degree: [8, 12, 16, 24, 36, 48, 64, 96]
           direct_sq: [1]
         query_args:
           search_L: [32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]
@@ -127,7 +127,7 @@ float:
           n_probe: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
   - base_args: ['@metric']
     constructor: FaissIVFRaBitQ
-    disabled: false
+    disabled: true
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivf-rabitq(faiss)
@@ -162,7 +162,7 @@ float:
           k_factor: [0, 2, 4, 8, 16]
   - base_args: ['@metric']
     constructor: FaissIVFTurboQuant
-    disabled: false
+    disabled: true
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivf-turboquant(faiss)
@@ -266,7 +266,7 @@ float:
     run_groups:
       base:
         args:
-          degree: [4, 8, 12, 16, 24, 36, 48, 64, 96]
+          degree: [8, 12, 16, 24, 36, 48, 64, 96]
         query_args:
           search_L: [32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]
   - base_args: ['@metric']
@@ -278,7 +278,7 @@ float:
     run_groups:
       base:
         args:
-          degree: [4, 8, 12, 16, 24, 36, 48, 64, 96]
+          degree: [8, 12, 16, 24, 36, 48, 64, 96]
           direct_sq: [0]
         query_args:
           search_L: [32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]
