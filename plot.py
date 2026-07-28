@@ -6,7 +6,8 @@
 #     "scipy",
 #     "seaborn",
 #     "scikit-learn",
-#     "networkx"
+#     "networkx",
+#     "h5py"
 # ]
 # ///
 
@@ -15,6 +16,10 @@ import os
 import math
 import argparse
 import itertools
+import sys
+
+import h5py
+from scipy.spatial.distance import pdist
 from scipy.stats import wilcoxon
 import polars as pl
 import seaborn as sns
@@ -28,27 +33,25 @@ from vibe.main import filter_disabled_algorithms, filter_algorithms_by_device
 ID_DATASETS = [
     "agnews-mxbai-1024-euclidean",
     "arxiv-nomic-768-normalized",
+    "dpr-jina-768-normalized",
     "gooaq-distilroberta-768-normalized",
     "imagenet-clip-512-normalized",
+    "landmark-dino-768-cosine",
     "landmark-nomic-768-normalized",
+    "msmarco-qwen-1024-normalized",
     "yahoo-minilm-384-normalized",
 ]
-ID_DATASETS_ADDITIONAL = [
-    "ccnews-nomic-768-normalized",
-    "celeba-resnet-2048-cosine",
-    "codesearchnet-jina-768-cosine",
-    "glove-200-cosine",
-    "landmark-dino-768-cosine",
-    "simplewiki-openai-3072-normalized",
-]
+
 # The list of out of distribution datasets
 OOD_DATASETS = [
-    "coco-nomic-768-normalized",
+    "hotpotqa-harrier-640-normalized",
     "laion-clip-512-normalized",
-    "llama-128-ip",
     "imagenet-align-640-normalized",
     "yandex-200-cosine",
+    "cqadupstack-muvera-5120-ip",
+    "cqadupstack-lemur-2048-ip",
     "yi-128-ip",
+    "llama-128-ip",
 ]
 
 sns.set_palette("tab10")
@@ -197,10 +200,21 @@ def radar_at_recall_plot(
     )["dataset"].to_list()
 
     algorithm_order = (
-        plot_data.with_columns(pl.col("qps_frac").rank(descending=True).over("dataset").alias("rank"))
+        plot_data.group_by("algorithm", "dataset-type")
+        .agg(
+            pl.col("qps_frac").mean().alias("type_score"),
+            (pl.col("qps_frac") > 0).sum().alias("coverage"),
+        )
+        # Give ID and OOD datasets equal total weight.
         .group_by("algorithm")
-        .agg(pl.col("rank").mean())
-        .sort("rank")
+        .agg(
+            pl.col("type_score").mean().alias("score"),
+            pl.col("coverage").sum().alias("coverage"),
+        )
+        .sort(
+            ["score", "coverage", "algorithm"],
+            descending=[True, True, False],
+        )
     )["algorithm"].to_list()
 
     width = ncols * 2.25
@@ -674,12 +688,18 @@ def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
     plt.close()
 
 
-def performance_gap_plot(out_dir, id_dataset, ood_dataset, summary, pca_mahalanobis_data, k=100, recall=0.9, gpu=False):
+def performance_gap_plot(
+    out_dir, id_dataset, ood_dataset, algorithms, summary, pca_mahalanobis_data, k=100, recall=0.9, gpu=False
+):
     """Plot the performance difference between in-distribution and out of distribution queries"""
     from matplotlib.gridspec import GridSpec
 
     gpu_suffix = "-gpu" if gpu else ""
-    pdata = summary.filter(pl.col("dataset").is_in([id_dataset, ood_dataset])).filter(pl.col("k") == k)
+    pdata = (
+        summary.filter(pl.col("dataset").is_in([id_dataset, ood_dataset]))
+        .filter(pl.col("algorithm").is_in(algorithms))
+        .filter(pl.col("k") == k)
+    )
     if pdata.is_empty():
         raise ValueError("no results data found for performance gap plot")
 
@@ -786,7 +806,7 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         "hnswlib",
         "ivfpqfs(faiss)",
         "lorann",
-        "ngt-onng",
+        "ivf(faiss)",
         "ngt-qg",
         "pynndescent",
         "scann",
@@ -818,13 +838,10 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         )
 
     for datasets in [
-        ["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"],
         ["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"],
-        ["ccnews-nomic-768-normalized", "celeba-resnet-2048-cosine"],
-        ["codesearchnet-jina-768-cosine", "glove-200-cosine"],
         ["gooaq-distilroberta-768-normalized", "imagenet-clip-512-normalized"],
         ["landmark-dino-768-cosine", "landmark-nomic-768-normalized"],
-        ["simplewiki-openai-3072-normalized", "yahoo-minilm-384-normalized"],
+        ["msmarco-qwen-1024-normalized", "yahoo-minilm-384-normalized"],
     ]:
         pareto_plot(
             out_dir,
@@ -839,7 +856,7 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         )
 
     for datasets in [
-        ["coco-nomic-768-normalized", "imagenet-align-640-normalized"],
+        ["hotpotqa-harrier-640-normalized", "imagenet-align-640-normalized"],
         ["laion-clip-512-normalized", "yandex-200-cosine"],
     ]:
         pareto_plot(
@@ -852,7 +869,6 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
                 "hnswlib",
                 "ivfpqfs(faiss)",
                 "lorann",
-                "mlann-rf",
                 "ngt-qg",
                 "roargraph",
                 "scann",
@@ -868,6 +884,28 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         out_dir,
         summary,
         pca_mahalanobis=pca_mahalanobis,
+        datasets=["cqadupstack-lemur-2048-ip", "cqadupstack-muvera-5120-ip"],
+        algorithms=[
+            "glass",
+            "hnswlib",
+            "ivf(faiss)",
+            "ivfpqfs(faiss)",
+            "lorann",
+            "mlann-rf",
+            "pynndescent",
+            "roargraph",
+            "scann",
+        ],
+        xlim=(0.2, 1),
+        ylim=(1e1, 2e3),
+        figsize=(8, 3),
+        separate_legend=True,
+    )
+
+    pareto_plot(
+        out_dir,
+        summary,
+        pca_mahalanobis=pca_mahalanobis,
         datasets=["yi-128-ip", "llama-128-ip"],
         algorithms=[
             "glass",
@@ -876,7 +914,7 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
             "ivfpqfs(faiss)",
             "lorann",
             "mlann-rf",
-            "ngt-onng",
+            "pynndescent",
             "roargraph",
             "scann",
         ],
@@ -897,9 +935,7 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
 
     for datasets in [
         ["agnews-mxbai-1024-hamming-binary", "agnews-mxbai-1024-euclidean"],
-        ["ccnews-nomic-768-hamming-binary", "ccnews-nomic-768-normalized"],
         ["landmark-nomic-768-hamming-binary", "landmark-nomic-768-normalized"],
-        ["simplewiki-openai-3072-hamming-binary", "simplewiki-openai-3072-normalized"],
     ]:
         pareto_plot(
             out_dir,
@@ -922,14 +958,31 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         ("imagenet-align-id-640-normalized", "imagenet-align-640-normalized"),
         ("laion-clip-id-512-normalized", "laion-clip-512-normalized"),
         ("yandex-id-200-cosine", "yandex-200-cosine"),
+        ("hotpotqa-harrier-id-640-normalized", "hotpotqa-harrier-640-normalized"),
     ]:
         performance_gap_plot(
             out_dir,
             datasets[0],
             datasets[1],
+            all_algorithms,
             summary,
             pca_mahalanobis,
             recall=0.95,
+            gpu=False,
+        )
+
+    for datasets in [
+        ("cqadupstack-lemur-id-2048-ip", "cqadupstack-lemur-2048-ip"),
+        ("cqadupstack-muvera-id-5120-ip", "cqadupstack-muvera-5120-ip"),
+    ]:
+        performance_gap_plot(
+            out_dir,
+            datasets[0],
+            datasets[1],
+            all_algorithms,
+            summary,
+            pca_mahalanobis,
+            recall=0.8,
             gpu=False,
         )
 
@@ -937,7 +990,7 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         summary,
         detail,
         0.95,
-        ID_DATASETS + ID_DATASETS_ADDITIONAL + OOD_DATASETS,
+        ID_DATASETS + OOD_DATASETS,
         output=out_dir,
         algorithms=selected,
         significance_level=0.01,
@@ -1098,6 +1151,8 @@ def print_metric_table(data, recall=0.9, k=100, algorithms=None, metric="build_t
         "imagenet-clip-512-normalized",
         "landmark-nomic-768-normalized",
         "yahoo-minilm-384-normalized",
+        "landmark-dino-768-cosine",
+        "msmarco-qwen-1024-normalized",
     ]
 
     filtered_data = data.filter(pl.col("k") == k).filter(pl.col("dataset").is_in(filtered_datasets))
@@ -1120,23 +1175,26 @@ def print_metric_table(data, recall=0.9, k=100, algorithms=None, metric="build_t
     pivot_table = best_qps_points.pivot(on="dataset", index="algorithm", values=metric)
 
     datasets = [col for col in pivot_table.columns if col != "algorithm"]
-    pivot_table = pivot_table.with_columns(
-        pl.concat_list([pl.col(ds) for ds in datasets]).list.mean().alias("avg_metric")
-    ).sort("avg_metric")
+    average_ranks = (
+        best_qps_points.with_columns(pl.col(metric).rank("average").over("dataset").alias("metric_rank"))
+        .group_by("algorithm")
+        .agg(pl.col("metric_rank").mean().alias("avg_rank"))
+    )
+    pivot_table = pivot_table.join(average_ranks, on="algorithm").sort(["avg_rank", "algorithm"])
 
-    datasets = [col for col in pivot_table.columns if col not in ["algorithm", "avg_metric"]]
+    datasets = [col for col in pivot_table.columns if col not in ["algorithm", "avg_rank"]]
     dataset_short_names = [ds.split("-")[0] for ds in datasets]
 
     print("\\begin{table}[ht!]")
     print("\\begin{center}")
-    metric_description = "Index construction times (seconds)" if metric == "build_time" else "Index sizes (KB)"
-    sort_description = "index construction times" if metric == "build_time" else "index sizes"
+    metric_description = "Index construction times (seconds)" if metric == "build_time" else "Index sizes (GB)"
+    sort_description = "index construction time" if metric == "build_time" else "index size"
     print(
         f"\\caption{{{metric_description} with throughput-optimized hyperparameters at ${int(recall * 100)}\\%$ recall. "
-        f"Algorithms are sorted based on their average {sort_description}.}}"
+        f"Algorithms are sorted based on their average rank by {sort_description}.}}"
     )
     print("\\label{table:construction}")
-    print("\\begin{NiceTabular}{l l l l l l l }")
+    print("\\begin{NiceTabular}{l " + ("r " * len(filtered_datasets)) + "}")
     print("\\toprule")
 
     header_row = "algorithm & " + " & ".join(dataset_short_names) + " \\\\"
@@ -1150,7 +1208,11 @@ def print_metric_table(data, recall=0.9, k=100, algorithms=None, metric="build_t
         for ds in datasets:
             metric_value = row.get(ds)
             if metric_value is not None:
-                row_values.append(str(int(round(metric_value))))
+                if metric == "index_size":
+                    formatted_value = f"{metric_value / 1024**2:.2f}"
+                    row_values.append(formatted_value)
+                else:
+                    row_values.append(str(int(round(metric_value))))
             else:
                 row_values.append("-")
 
@@ -1163,13 +1225,436 @@ def print_metric_table(data, recall=0.9, k=100, algorithms=None, metric="build_t
     print("\\end{table}")
 
 
+def _l2_normalize(points):
+    norms = np.linalg.norm(points, axis=1, keepdims=True)
+    points /= np.maximum(norms, 1e-12)
+    return points
+
+
+def _load_dataset_points(dataset_path):
+    with h5py.File(dataset_path, "r") as dataset_file:
+        if "learn" not in dataset_file:
+            raise ValueError(f"{dataset_path} does not contain a learn dataset")
+
+        data = np.asarray(dataset_file["train"][:], dtype=np.float32)
+        learn = np.asarray(dataset_file["learn"][:], dtype=np.float32)
+
+    if data.ndim != 2 or learn.ndim != 2:
+        raise ValueError(f"{dataset_path} train and learn datasets must be two-dimensional")
+    if data.shape[1] != learn.shape[1]:
+        raise ValueError(f"{dataset_path} train and learn dimensions do not match")
+
+    if pathlib.Path(dataset_path).stem.endswith("-cosine"):
+        return _l2_normalize(data), _l2_normalize(learn)
+
+    return data, learn
+
+
+def _estimate_median_bandwidth(first, second, sample_size, rng):
+    total_size = len(first) + len(second)
+    sample_size = min(sample_size, total_size)
+    if sample_size < 2:
+        raise ValueError("Median bandwidth estimation requires at least two points")
+
+    union_indices = rng.choice(total_size, size=sample_size, replace=False)
+    first_mask = union_indices < len(first)
+    sample = np.empty((sample_size, first.shape[1]), dtype=np.float32)
+    sample[first_mask] = first[union_indices[first_mask]]
+    sample[~first_mask] = second[union_indices[~first_mask] - len(first)]
+
+    distances = pdist(sample, metric="euclidean")
+    positive_distances = distances[distances > 0.0]
+    if len(positive_distances) == 0:
+        raise ValueError("Cannot estimate a positive kernel bandwidth")
+    return float(np.median(positive_distances))
+
+
+def _stream_rff_statistics(data, learn, weights, phases, chunk_size):
+    if weights.ndim != 2 or phases.shape != (weights.shape[1],):
+        raise ValueError("RFF weights and phases have incompatible shapes")
+    if chunk_size <= 0:
+        raise ValueError("The RFF chunk size must be positive")
+
+    feature_count = weights.shape[1]
+    data_sum = np.zeros(feature_count, dtype=np.float64)
+    learn_sum = np.zeros(feature_count, dtype=np.float64)
+    data_squared_norm_sum = 0.0
+    learn_squared_norm_sum = 0.0
+
+    for start in range(0, len(data), chunk_size):
+        stop = min(start + chunk_size, len(data))
+        projected = data[start:stop] @ weights
+        projected += phases
+        np.cos(projected, out=projected)
+        data_sum += projected.sum(axis=0, dtype=np.float64)
+        data_squared_norm_sum += float(np.einsum("ij,ij->", projected, projected, dtype=np.float64))
+
+    for start in range(0, len(learn), chunk_size):
+        stop = min(start + chunk_size, len(learn))
+        projected = learn[start:stop] @ weights
+        projected += phases
+        np.cos(projected, out=projected)
+        learn_sum += projected.sum(axis=0, dtype=np.float64)
+        learn_squared_norm_sum += float(np.einsum("ij,ij->", projected, projected, dtype=np.float64))
+
+    feature_scale = np.sqrt(2.0 / feature_count)
+    data_mean = feature_scale * data_sum / len(data)
+    learn_mean = feature_scale * learn_sum / len(learn)
+    data_sum_squared_feature_norms = feature_scale**2 * data_squared_norm_sum
+    learn_sum_squared_feature_norms = feature_scale**2 * learn_squared_norm_sum
+    data_covariance_trace = (data_sum_squared_feature_norms - len(data) * np.dot(data_mean, data_mean)) / (
+        len(data) - 1
+    )
+    learn_covariance_trace = (learn_sum_squared_feature_norms - len(learn) * np.dot(learn_mean, learn_mean)) / (
+        len(learn) - 1
+    )
+    return data_mean, learn_mean, data_covariance_trace, learn_covariance_trace
+
+
+def _multiscale_mmd_rff(
+    data,
+    learn,
+    rng,
+    bandwidth_sample_size=4_096,
+    bandwidth_scales=(0.25, 0.5, 1.0, 2.0, 4.0),
+    n_features=1_024,
+    chunk_size=4_096,
+):
+    if data.ndim != 2 or learn.ndim != 2 or data.shape[1] != learn.shape[1]:
+        raise ValueError(f"MMD samples have incompatible shapes: {data.shape} and {learn.shape}")
+    if len(data) < 4 or len(learn) < 2 or n_features <= 0 or chunk_size <= 0:
+        raise ValueError("RFF MMD requires non-trivial samples and positive computation parameters")
+    if not bandwidth_scales or any(scale <= 0.0 for scale in bandwidth_scales):
+        raise ValueError("MMD bandwidth scales must be positive")
+
+    median_bandwidth = _estimate_median_bandwidth(data, learn, bandwidth_sample_size, rng)
+
+    scale_count = len(bandwidth_scales)
+    total_features = scale_count * n_features
+    weights = np.empty((data.shape[1], total_features), dtype=np.float32)
+    phases = np.empty(total_features, dtype=np.float32)
+
+    for scale_index, scale in enumerate(bandwidth_scales):
+        feature_slice = slice(scale_index * n_features, (scale_index + 1) * n_features)
+        bandwidth = median_bandwidth * scale
+        weights[:, feature_slice] = rng.normal(size=(data.shape[1], n_features))
+        weights[:, feature_slice] /= bandwidth
+        phases[feature_slice] = rng.uniform(0.0, 2.0 * np.pi, size=n_features)
+
+    data_mean, learn_mean, data_covariance_trace, learn_covariance_trace = _stream_rff_statistics(
+        data,
+        learn,
+        weights,
+        phases,
+        chunk_size,
+    )
+    observed_squared = np.sum((data_mean - learn_mean) ** 2)
+    sampling_bias = data_covariance_trace / len(data) + learn_covariance_trace / len(learn)
+    signed_mmd_squared = observed_squared - sampling_bias
+    mmd = np.sqrt(max(0.0, signed_mmd_squared))
+    return (
+        float(np.sqrt(max(0.0, sampling_bias))),
+        float(mmd),
+    )
+
+
+def _covariance_square_root(covariance):
+    covariance = (covariance + covariance.T) / 2.0
+    eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+    return (eigenvectors * np.sqrt(np.maximum(eigenvalues, 0.0))) @ eigenvectors.T
+
+
+def _bures_fidelity_from_square_root(first_square_root, second_covariance):
+    second_covariance = (second_covariance + second_covariance.T) / 2.0
+    middle = first_square_root @ second_covariance @ first_square_root
+    middle = (middle + middle.T) / 2.0
+    return float(np.sqrt(np.maximum(np.linalg.eigvalsh(middle), 0.0)).sum())
+
+
+def _bures_fidelity(first_covariance, second_covariance):
+    return _bures_fidelity_from_square_root(_covariance_square_root(first_covariance), second_covariance)
+
+
+def _gaussian_statistics(points, chunk_size=4_096, indices=None):
+    if points.ndim != 2 or chunk_size <= 0:
+        raise ValueError("Gaussian-statistics inputs are invalid")
+
+    if indices is not None:
+        indices = np.asarray(indices)
+        if indices.ndim != 1:
+            raise ValueError("Gaussian-statistics indices must be one-dimensional")
+        count = len(indices)
+    else:
+        count = len(points)
+    if count < 2:
+        raise ValueError("Gaussian statistics require at least two points")
+
+    if indices is None:
+        mean = points.mean(axis=0, dtype=np.float64)
+    else:
+        point_sum = np.zeros(points.shape[1], dtype=np.float64)
+        for start in range(0, count, chunk_size):
+            stop = min(start + chunk_size, count)
+            point_sum += points[indices[start:stop]].sum(axis=0, dtype=np.float64)
+        mean = point_sum / count
+
+    centered_second_moment = np.zeros((points.shape[1], points.shape[1]), dtype=np.float64)
+    for start in range(0, count, chunk_size):
+        stop = min(start + chunk_size, count)
+        point_chunk = points[start:stop] if indices is None else points[indices[start:stop]]
+        centered = np.asarray(point_chunk, dtype=np.float64) - mean
+        centered_second_moment += centered.T @ centered
+
+    centered_second_moment = (centered_second_moment + centered_second_moment.T) / 2.0
+    return count, mean, centered_second_moment
+
+
+def _frechet_distance_from_statistics(first, second, first_covariance_square_root=None):
+    first_count, first_mean, first_centered_second_moment = first
+    second_count, second_mean, second_centered_second_moment = second
+    if first_mean.shape != second_mean.shape:
+        raise ValueError(f"Frechet statistics have incompatible dimensions: {first_mean.shape} and {second_mean.shape}")
+
+    second_covariance = second_centered_second_moment / (second_count - 1)
+    if first_covariance_square_root is None:
+        first_covariance = first_centered_second_moment / (first_count - 1)
+        first_covariance_trace = float(np.trace(first_covariance))
+        covariance_fidelity = _bures_fidelity(first_covariance, second_covariance)
+    else:
+        first_covariance_trace = float(np.trace(first_centered_second_moment)) / (first_count - 1)
+        covariance_fidelity = _bures_fidelity_from_square_root(first_covariance_square_root, second_covariance)
+    covariance_squared = max(
+        0.0,
+        first_covariance_trace + float(np.trace(second_covariance)) - 2.0 * covariance_fidelity,
+    )
+    mean_squared = float(np.sum((first_mean - second_mean) ** 2))
+    return float(np.sqrt(mean_squared + covariance_squared))
+
+
+def _sorted_projections(points, indices, directions, chunk_size=4_096):
+    if points.ndim != 2 or directions.ndim != 2 or points.shape[1] != directions.shape[0]:
+        raise ValueError("Points and sliced-Wasserstein directions have incompatible shapes")
+    if indices.ndim != 1 or len(indices) == 0 or chunk_size <= 0:
+        raise ValueError("Sliced-Wasserstein sampling parameters must be positive")
+
+    projections = np.empty((directions.shape[1], len(indices)), dtype=np.float32)
+    for start in range(0, len(indices), chunk_size):
+        stop = min(start + chunk_size, len(indices))
+        projections[:, start:stop] = (points[indices[start:stop]] @ directions).T
+    projections.sort(axis=1)
+    return projections
+
+
+def _sliced_wasserstein_2_squared_per_projection(
+    first,
+    first_indices,
+    second,
+    second_indices,
+    directions,
+):
+    if first.ndim != 2 or second.ndim != 2 or first.shape[1] != second.shape[1]:
+        raise ValueError(f"Wasserstein samples have incompatible shapes: {first.shape} and {second.shape}")
+    if len(first_indices) != len(second_indices):
+        raise ValueError("Wasserstein samples have different sizes")
+
+    first_projected = _sorted_projections(first, first_indices, directions)
+    second_projected = _sorted_projections(second, second_indices, directions)
+    first_projected -= second_projected
+    np.square(first_projected, out=first_projected)
+    return first_projected.mean(axis=1, dtype=np.float64)
+
+
+def _distribution_distances(
+    dataset_path,
+    trials,
+    sample_size,
+    n_projections,
+    frechet_sample_size,
+    rff_features,
+    rff_chunk_size,
+    bandwidth_sample_size,
+    bandwidth_scales,
+    seed,
+):
+    if trials <= 0 or sample_size <= 1 or n_projections <= 0 or frechet_sample_size <= 1:
+        raise ValueError("Distribution-distance computation parameters must be positive")
+
+    dataset_path = pathlib.Path(dataset_path)
+    dataset_seed = np.random.SeedSequence([seed, *dataset_path.stem.encode("utf-8")])
+    mmd_seed, frechet_seed, wasserstein_seed = dataset_seed.spawn(3)
+    mmd_rng = np.random.default_rng(mmd_seed)
+    frechet_rng = np.random.default_rng(frechet_seed)
+    wasserstein_rng = np.random.default_rng(wasserstein_seed)
+    data, learn = _load_dataset_points(dataset_path)
+
+    print("  Computing multiscale MMD", file=sys.stderr, flush=True)
+    mmd_null, mmd_debiased = _multiscale_mmd_rff(
+        data,
+        learn,
+        mmd_rng,
+        bandwidth_sample_size=bandwidth_sample_size,
+        bandwidth_scales=bandwidth_scales,
+        n_features=rff_features,
+        chunk_size=rff_chunk_size,
+    )
+
+    comparison_size = min(sample_size, len(learn), len(data) // 2)
+    if comparison_size < 2:
+        raise ValueError(f"{dataset_path} does not contain enough train and learn points")
+
+    frechet_comparison_size = min(frechet_sample_size, len(learn), len(data) // 2)
+    if frechet_comparison_size < 2:
+        raise ValueError(f"{dataset_path} does not contain enough points for Frechet distance")
+
+    print(
+        f"  Computing Frechet distance with {frechet_comparison_size} points per sample",
+        file=sys.stderr,
+        flush=True,
+    )
+    frechet_learn_indices = frechet_rng.choice(len(learn), size=frechet_comparison_size, replace=False)
+    frechet_data_indices = frechet_rng.choice(len(data), size=2 * frechet_comparison_size, replace=False)
+    first_data_statistics = _gaussian_statistics(
+        data,
+        indices=frechet_data_indices[:frechet_comparison_size],
+    )
+    second_data_statistics = _gaussian_statistics(
+        data,
+        indices=frechet_data_indices[frechet_comparison_size:],
+    )
+    learn_statistics = _gaussian_statistics(learn, indices=frechet_learn_indices)
+    first_data_count, _, first_data_centered_second_moment = first_data_statistics
+    first_data_covariance_square_root = _covariance_square_root(
+        first_data_centered_second_moment / (first_data_count - 1)
+    )
+    frechet_data_data = _frechet_distance_from_statistics(
+        first_data_statistics,
+        second_data_statistics,
+        first_covariance_square_root=first_data_covariance_square_root,
+    )
+    frechet_data_learn = _frechet_distance_from_statistics(
+        first_data_statistics,
+        learn_statistics,
+        first_covariance_square_root=first_data_covariance_square_root,
+    )
+
+    print("  Computing sliced 2-Wasserstein", file=sys.stderr, flush=True)
+    wasserstein_data_learn_squared_sum = 0.0
+    wasserstein_data_data_squared_sum = 0.0
+    for _ in range(trials):
+        learn_indices = wasserstein_rng.choice(len(learn), size=comparison_size, replace=False)
+        data_reference_indices = wasserstein_rng.choice(len(data), size=comparison_size, replace=False)
+        data_pair_indices = wasserstein_rng.choice(len(data), size=2 * comparison_size, replace=False)
+        directions = wasserstein_rng.normal(size=(data.shape[1], n_projections)).astype(np.float32)
+        directions /= np.maximum(np.linalg.norm(directions, axis=0, keepdims=True), 1e-12)
+
+        data_learn_squared = _sliced_wasserstein_2_squared_per_projection(
+            learn,
+            learn_indices,
+            data,
+            data_reference_indices,
+            directions,
+        )
+        data_data_squared = _sliced_wasserstein_2_squared_per_projection(
+            data,
+            data_pair_indices[:comparison_size],
+            data,
+            data_pair_indices[comparison_size:],
+            directions,
+        )
+        wasserstein_data_learn_squared_sum += float(data_learn_squared.sum(dtype=np.float64))
+        wasserstein_data_data_squared_sum += float(data_data_squared.sum(dtype=np.float64))
+
+    projection_count = trials * n_projections
+    return (
+        mmd_null,
+        mmd_debiased,
+        frechet_data_data,
+        frechet_data_learn,
+        float(np.sqrt(wasserstein_data_data_squared_sum / projection_count)),
+        float(np.sqrt(wasserstein_data_learn_squared_sum / projection_count)),
+    )
+
+
+def print_ood_distance_table(
+    data_dir,
+    datasets=OOD_DATASETS,
+    trials=4,
+    sample_size=50_000,
+    n_projections=512,
+    frechet_sample_size=100_000,
+    rff_features=1_024,
+    rff_chunk_size=4_096,
+    bandwidth_sample_size=4_096,
+    bandwidth_scales=(0.25, 0.5, 1.0, 2.0, 4.0),
+    seed=0,
+):
+    data_dir = pathlib.Path(data_dir)
+    rows = []
+
+    for dataset in datasets:
+        dataset_path = data_dir / f"{dataset}.hdf5"
+        if not dataset_path.is_file():
+            raise FileNotFoundError(f"Dataset not found: {dataset_path}")
+
+        print(f"Computing distribution distances for {dataset}", file=sys.stderr)
+        distances = _distribution_distances(
+            dataset_path,
+            trials=trials,
+            sample_size=sample_size,
+            n_projections=n_projections,
+            frechet_sample_size=frechet_sample_size,
+            rff_features=rff_features,
+            rff_chunk_size=rff_chunk_size,
+            bandwidth_sample_size=bandwidth_sample_size,
+            bandwidth_scales=bandwidth_scales,
+            seed=seed,
+        )
+        rows.append((dataset, *distances))
+
+    print("\\begin{table}[ht!]")
+    print("\\begin{center}")
+    print("\\caption{Distribution distances.}")
+    print("\\label{table:distribution-distances}")
+    print("\\begin{NiceTabular}{l rr rr rr}")
+    print("\\toprule")
+    print(
+        "dataset & \\multicolumn{2}{c}{multiscale MMD} & "
+        "\\multicolumn{2}{c}{Frechet distance} & "
+        "\\multicolumn{2}{c}{sliced $2$-Wasserstein} \\\\"
+    )
+    print(" & data vs. data & data vs. learn & data vs. data & data vs. learn & data vs. data & data vs. learn \\\\")
+    print("\\midrule")
+
+    for (
+        dataset,
+        mmd_null,
+        mmd_debiased,
+        frechet_data,
+        frechet_learn,
+        wasserstein_data,
+        wasserstein_learn,
+    ) in rows:
+        print(
+            f"{dataset.split('-')[0]} & {mmd_null:.4f} & {mmd_debiased:.4f} & "
+            f"{frechet_data:.4f} & {frechet_learn:.4f} & "
+            f"{wasserstein_data:.4f} & {wasserstein_learn:.4f} \\\\"
+        )
+    print("\\bottomrule")
+    print("\\end{NiceTabular}")
+    print("\\end{center}")
+    print("\\end{table}")
+
+
 if __name__ == "__main__":
     aparser = argparse.ArgumentParser()
     aparser.add_argument("--results", help="the path to the directory containing results", default="results")
     aparser.add_argument("--output", help="the path to the output directory", default="plots")
     aparser.add_argument(
         "--plot-type",
-        help="type of plot (pareto, radar, difficulty, performance-gap, split-difficulties, critdiff, build-time-table)",
+        help=(
+            "type of plot (pareto, radar, difficulty, performance-gap, split-difficulties, critdiff, "
+            "build-time-table, index-size-table, ood-distance-table, paper)"
+        ),
         default="pareto",
     )
     aparser.add_argument("--dataset", help="dataset", default="agnews-mxbai-1024-euclidean")
@@ -1184,6 +1669,10 @@ if __name__ == "__main__":
     os.makedirs(args.output, exist_ok=True)
     data_dir = pathlib.Path(args.results)
     out_dir = pathlib.Path(args.output)
+
+    if args.plot_type == "ood-distance-table":
+        print_ood_distance_table("data")
+        raise SystemExit
 
     normalize_names = pl.col("dataset")
 
@@ -1246,6 +1735,8 @@ if __name__ == "__main__":
 
         if "llama-128-ip" in datasets or "yi-128-ip" in datasets:
             xlim = (0, 1)
+        elif "cqadupstack-lemur-2048-ip" in datasets or "cqadupstack-muvera-5120-ip" in datasets:
+            xlim = (0.2, 1.0)
         else:
             xlim = (0.7, 1.0)
 
@@ -1283,6 +1774,7 @@ if __name__ == "__main__":
             out_dir,
             datasets[0],
             datasets[1],
+            algorithms,
             summary,
             pca_mahalanobis,
             k=count,
