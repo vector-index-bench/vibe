@@ -218,10 +218,12 @@ The results website can be run locally by following the instructions in the [web
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
 | [CAGRA](https://github.com/rapidsai/cuvs) | 26.04.00 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
-| [GLASS](https://github.com/zilliztech/pyglass) | git+d2296ec |
+| [Glass](https://github.com/zilliztech/pyglass) | git+d2296ec |
 | [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
+| [HNSW-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | git+5ea4df0 |
 | [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
 | [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
+| [IVF-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | git+5ea4df0 |
 | [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
 | [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
 | [LoRANN](https://github.com/ejaasaari/lorann) | 0.4.5 |
