@@ -175,7 +175,7 @@ Add your algorithm in the folder `vibe/algorithms/{METHOD}/` by providing
 
 Please refer to e.g. the [hnswlib module](https://github.com/vector-index-bench/vibe/tree/main/vibe/algorithms/hnswlib) for a reference implementation.
 
-## Running the website locally
+### Running the website locally
 
 The results website can be run locally by following the instructions in the [website repository](https://github.com/vector-index-bench/vector-index-bench.github.io).
 
