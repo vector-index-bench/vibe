@@ -2,9 +2,17 @@ import json
 import os
 import re
 import traceback
+import hashlib
 from typing import Any, Optional, Tuple
 
 from vibe.definitions import Definition
+
+_COMPLETION_MARKER_DIR_SUFFIX = ".complete"
+
+
+def _completion_marker_filepath(file_path: str, search_parameters: str) -> str:
+    marker_id = hashlib.sha256(search_parameters.encode("utf-8")).hexdigest()
+    return os.path.join(file_path + _COMPLETION_MARKER_DIR_SUFFIX, marker_id)
 
 
 def is_run(
@@ -15,7 +23,11 @@ def is_run(
     gpu_mode: bool = False,
 ) -> bool:
     file_path, search_parameters = build_result_filepath(dataset_name, count, definition, query_arguments, gpu_mode)
-    return os.path.exists(file_path)
+    if not os.path.exists(file_path):
+        return False
+    if not search_parameters:
+        return True
+    return os.path.exists(_completion_marker_filepath(file_path, search_parameters))
 
 
 def build_result_filepath(
@@ -75,10 +87,14 @@ def store_results(dataset_name: str, count: int, definition: Definition, query_a
     if not os.path.isdir(directory):
         os.makedirs(directory)
 
+    marker_path = _completion_marker_filepath(filename, search_parameters) if search_parameters else None
+    if marker_path and os.path.exists(marker_path):
+        os.remove(marker_path)
+
     with h5py.File(filename, "a") as f:
-        if search_parameters not in f:
-            f.create_group(search_parameters)
-        result_group = f[search_parameters]
+        if search_parameters in f:
+            del f[search_parameters]
+        result_group = f.create_group(search_parameters)
 
         for k, v in attrs.items():
             result_group.attrs[k] = v
@@ -90,6 +106,11 @@ def store_results(dataset_name: str, count: int, definition: Definition, query_a
             times[i] = time
             neighbors[i] = [n for n, d in ds] + [-1] * (count - len(ds))
             distances[i] = [d for n, d in ds] + [float("inf")] * (count - len(ds))
+
+    if marker_path:
+        os.makedirs(os.path.dirname(marker_path), exist_ok=True)
+        with open(marker_path, "w", encoding="utf-8") as f:
+            f.write(search_parameters)
 
 
 def load_all_results(dataset: str, count: int, gpu_mode: bool = False):
