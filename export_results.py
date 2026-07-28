@@ -213,7 +213,7 @@ def export_data_info(data_dir, output_file):
             try:
                 with h5py.File(path) as hfp:
                     name = path.name.replace(".hdf5", "")
-                    n, d = hfp["train"][:].shape
+                    n, d = hfp["train"].shape
                     stats.append(dict(dataset=name, n=n, dimensions=d))
             except Exception as e:
                 print(f"Invalid dataset file {path} -- skipping")
@@ -234,13 +234,11 @@ def mahalanobis_distance_batch(V, Q):
     if Q.shape[0] < 2:
         raise ValueError("Input matrix 'Q' must have at least 2 samples (rows).")
 
-    mu = np.mean(Q, axis=0)
-    cov_matrix = np.cov(Q, rowvar=False, ddof=1)
+    mu = np.mean(Q, axis=0, dtype=np.float64)
+    diff = V.astype(np.float64, copy=False) - mu
 
-    diff = V - mu
-
-    if cov_matrix.ndim == 0:
-        variance = cov_matrix.item()
+    if Q.shape[1] == 1:
+        variance = np.var(Q[:, 0], ddof=1, dtype=np.float64)
         if np.isclose(variance, 0):
             is_zero_diff = np.all(np.isclose(diff, 0), axis=1)
             distances_sq = np.full(V.shape[0], np.inf)
@@ -249,8 +247,9 @@ def mahalanobis_distance_batch(V, Q):
             inv_cov = 1.0 / variance
             distances_sq = (diff**2 * inv_cov).flatten()
     else:
+        cov_matrix = covariance_matrix(Q, mu)
         try:
-            inv_cov_matrix = np.linalg.pinv(cov_matrix)
+            inv_cov_matrix = np.linalg.pinv(cov_matrix, hermitian=True)
         except np.linalg.LinAlgError:
             raise ValueError("Covariance matrix is singular and pseudo-inverse could not be computed.")
 
@@ -266,7 +265,107 @@ def mahalanobis_distance_batch(V, Q):
     return np.sqrt(distances_sq)
 
 
-def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
+def diagonal_mahalanobis_distance_batch(V, mu, variance, batch_size=8192):
+    inv_variance = np.zeros_like(variance, dtype=np.float32)
+    np.divide(1.0, variance, out=inv_variance, where=~np.isclose(variance, 0))
+
+    distances_sq = np.empty(V.shape[0], dtype=np.float64)
+    for start in range(0, V.shape[0], batch_size):
+        stop = min(start + batch_size, V.shape[0])
+        diff = V[start:stop] - mu
+        distances_sq[start:stop] = np.sum(diff * diff * inv_variance, axis=1, dtype=np.float64)
+
+    return np.sqrt(distances_sq)
+
+
+def estimate_diagonal_mahalanobis_stats(dataset, ranges, is_binary):
+    total = None
+    total_sq = None
+    count = 0
+
+    for start, stop in ranges:
+        vectors = prepare_vectors(dataset[start:stop], is_binary)
+
+        if total is None:
+            total = np.zeros(vectors.shape[1], dtype=np.float64)
+            total_sq = np.zeros(vectors.shape[1], dtype=np.float64)
+
+        total += np.sum(vectors, axis=0, dtype=np.float64)
+        total_sq += np.sum(vectors * vectors, axis=0, dtype=np.float64)
+        count += vectors.shape[0]
+
+    mu = total / count
+    variance = (total_sq - count * mu * mu) / (count - 1)
+    variance = np.maximum(variance, 0)
+
+    return mu.astype(np.float32), variance.astype(np.float32)
+
+
+def covariance_matrix(Q, mu, batch_size=2048):
+    cov = np.zeros((Q.shape[1], Q.shape[1]), dtype=np.float64)
+    for start in range(0, Q.shape[0], batch_size):
+        stop = min(start + batch_size, Q.shape[0])
+        centered = Q[start:stop].astype(np.float64, copy=True)
+        centered -= mu
+        cov += centered.T @ centered
+
+    cov /= Q.shape[0] - 1
+    return cov
+
+
+def sample_row_ranges(row_count, sample_size, gen, block_size=1024):
+    sample_size = min(row_count, sample_size)
+    block_size = min(block_size, sample_size)
+    block_count = (sample_size + block_size - 1) // block_size
+    edges = np.linspace(0, row_count, block_count + 1, dtype=np.int64)
+
+    ranges = []
+    remaining = sample_size
+    for block_index in range(block_count):
+        take = min(block_size, remaining)
+        low = edges[block_index]
+        high = max(low, edges[block_index + 1] - take)
+        start = low if high == low else gen.integers(low, high + 1)
+        ranges.append((int(start), int(start + take)))
+        remaining -= take
+
+    return ranges
+
+
+def read_hdf5_ranges(dataset, ranges):
+    row_count = sum(stop - start for start, stop in ranges)
+    rows = np.empty((row_count, *dataset.shape[1:]), dtype=dataset.dtype)
+
+    offset = 0
+    for start, stop in ranges:
+        next_offset = offset + stop - start
+        rows[offset:next_offset] = dataset[start:stop]
+        offset = next_offset
+
+    return rows
+
+
+def read_hdf5_rows(dataset, indices, batch_size=8192):
+    indices = np.asarray(indices)
+    rows = np.empty((len(indices), *dataset.shape[1:]), dtype=dataset.dtype)
+
+    for start in range(0, len(indices), batch_size):
+        stop = min(start + batch_size, len(indices))
+        rows[start:stop] = dataset[indices[start:stop]]
+
+    return rows
+
+
+def prepare_vectors(vectors, is_binary):
+    if is_binary:
+        return np.unpackbits(vectors, axis=1).astype(np.float32, copy=False)
+
+    return vectors.astype(np.float32, copy=False)
+
+
+def export_pca_and_mahalanobis(
+    data_dir, output_file, sample_size=2000, mahalanobis_sample_size=100_000, mahalanobis_mode="full"
+):
     if output_file.exists():
         print(f"Output file {output_file} already exists -- skipping")
         return
@@ -284,33 +383,41 @@ def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
             try:
                 with h5py.File(path) as hfp:
                     name = path.name.replace(".hdf5", "")
-                    train = hfp["train"][:]
+                    train_dataset = hfp["train"]
                     test = hfp["test"][:]
+                    is_binary = name.endswith("-binary")
+
+                    mahalanobis_sample_ranges = sample_row_ranges(
+                        train_dataset.shape[0], mahalanobis_sample_size, gen
+                    )
+                    train_sample_ranges = sample_row_ranges(train_dataset.shape[0], sample_size, gen)
+
+                    if mahalanobis_mode == "full":
+                        mahalanobis_sample_train = read_hdf5_ranges(train_dataset, mahalanobis_sample_ranges)
+                    else:
+                        mahalanobis_mu, mahalanobis_variance = estimate_diagonal_mahalanobis_stats(
+                            train_dataset, mahalanobis_sample_ranges, is_binary
+                        )
+                    train = read_hdf5_ranges(train_dataset, train_sample_ranges)
             except Exception:
                 print(f"Invalid dataset file {path} -- skipping")
                 continue
 
-            if name.endswith("-binary"):
-                train = np.unpackbits(train).reshape(train.shape[0], -1).astype(np.float32)
-                test = np.unpackbits(test).reshape(test.shape[0], -1).astype(np.float32)
-
-            if train.dtype != np.float32:
-                train = train.astype(np.float32)
-                test = test.astype(np.float32)
-
-            mahalanobis_sample_train = train[np.sort(gen.choice(train.shape[0], 100_000, replace=False))]
-            train_sample_indices = np.sort(gen.choice(train.shape[0], sample_size, replace=False))
-            train = train[train_sample_indices]
-
-            data_to_data = mahalanobis_distance_batch(train, mahalanobis_sample_train)
-            query_to_data = mahalanobis_distance_batch(test, mahalanobis_sample_train)
-
-            mahalanobis_combined = np.concatenate((data_to_data, query_to_data))
-
-            pca = PCA(n_components=2, random_state=1)
-            scaler = StandardScaler()
-
+            train = prepare_vectors(train, is_binary)
+            test = prepare_vectors(test, is_binary)
             combined = np.vstack([train, test])
+
+            if mahalanobis_mode == "full":
+                mahalanobis_sample_train = prepare_vectors(mahalanobis_sample_train, is_binary)
+                mahalanobis_combined = mahalanobis_distance_batch(combined, mahalanobis_sample_train)
+            else:
+                mahalanobis_combined = diagonal_mahalanobis_distance_batch(
+                    combined, mahalanobis_mu, mahalanobis_variance
+                )
+
+            pca = PCA(n_components=2, random_state=1, svd_solver="randomized")
+            scaler = StandardScaler(copy=False)
+
             combined_scaled = scaler.fit_transform(combined)
             combined_pca = pca.fit_transform(combined_scaled)
             df = pl.DataFrame(
@@ -323,6 +430,11 @@ def export_pca_and_mahalanobis(data_dir, output_file, sample_size=2000):
                 )
             )
             pcas.append(df)
+            del combined, combined_scaled, combined_pca, train, test, mahalanobis_combined
+            if mahalanobis_mode == "full":
+                del mahalanobis_sample_train
+            else:
+                del mahalanobis_mu, mahalanobis_variance
 
             pbar.update(1)
 
@@ -336,8 +448,30 @@ def main():
     aparser.add_argument("--data", help="the path to the directory containing datasets", default="data")
     aparser.add_argument("--output", help="the path to the output directory", default="results")
     aparser.add_argument("--parallelism", type=int, help="number of parallel processes to use", default=1)
+    aparser.add_argument("--pca-sample-size", type=int, help="number of train rows to export for PCA", default=2000)
+    aparser.add_argument(
+        "--mahalanobis-sample-size",
+        type=int,
+        help="number of train rows used to estimate Mahalanobis distances",
+        default=100_000,
+    )
+    aparser.add_argument(
+        "--mahalanobis-mode",
+        choices=("diagonal", "full"),
+        default="full",
+        help="full computes the exact covariance pseudo-inverse; diagonal is faster",
+    )
+    aparser.add_argument(
+        "--skip-pca-mahalanobis",
+        help="skip exporting data-pca-mahalanobis.parquet",
+        action="store_true",
+    )
 
     args = aparser.parse_args()
+    if args.pca_sample_size < 1:
+        aparser.error("--pca-sample-size must be at least 1")
+    if args.mahalanobis_sample_size < 2:
+        aparser.error("--mahalanobis-sample-size must be at least 2")
 
     output_dir = pathlib.Path(args.output)
     output_summary = output_dir / "summary.parquet"
@@ -348,7 +482,14 @@ def main():
     export_all_results(args.results, args.data, args.parallelism, output_summary, output_dir)
     export_query_stats(args.data, output_stats)
     export_data_info(args.data, output_info)
-    export_pca_and_mahalanobis(args.data, output_pca_mahalanobis)
+    if not args.skip_pca_mahalanobis:
+        export_pca_and_mahalanobis(
+            args.data,
+            output_pca_mahalanobis,
+            sample_size=args.pca_sample_size,
+            mahalanobis_sample_size=args.mahalanobis_sample_size,
+            mahalanobis_mode=args.mahalanobis_mode,
+        )
 
 
 if __name__ == "__main__":
