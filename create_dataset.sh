@@ -25,7 +25,7 @@ if [ $local_mode = "false" ]; then
         echo "Error: dataset.sif does not exist! Run singularity build dataset.sif dataset.def" >&2
         exit 1
     fi
-    singularity exec $singularity_args "dataset.sif" python3 create_dataset.py $script_args
+    singularity exec $singularity_args "dataset.sif" python3 -u create_dataset.py $script_args
 else
-    python3 create_dataset.py $args
+    python3 -u create_dataset.py $args
 fi

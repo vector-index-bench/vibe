@@ -7,12 +7,13 @@ From: ubuntu:24.04
 %post
   apt-get update
   apt-mark hold openssh-client
-  apt-get install -y bzip2 curl libxml2 git
+  apt-get install -y bzip2 curl libxml2 git build-essential
 
   apt-get clean
   rm -rf /var/lib/apt/lists/*
 
-  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/2.3.2 | tar -xvj bin/micromamba
+  curl -fL --retry 5 --retry-all-errors -o /tmp/micromamba.tar.bz2 https://micro.mamba.pm/api/micromamba/linux-64/2.6.2
+  tar -xvjf /tmp/micromamba.tar.bz2 bin/micromamba
 
   mkdir -p /opt/env/micromamba
 
@@ -26,8 +27,14 @@ From: ubuntu:24.04
   micromamba install -y -q -f /environment.yml
   micromamba clean --all --yes
 
-  pip install --no-cache-dir torch==2.8.0 torchvision==0.23.0
-  pip install --no-cache-dir timm==1.0.19 transformers==4.56.1 sentence-transformers==5.1.0 accelerate==1.10.1 hf-xet==1.1.10 xformers==0.0.32.post2 fastembed-gpu==0.7.3 model2vec==0.6.0
+  pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cu128 \
+    torch==2.10.0 torchvision==0.25.0
+
+  printf "torch==2.10.0\ntorchvision==0.25.0\n" > /tmp/torch-constraints.txt
+  pip install --no-cache-dir --constraint /tmp/torch-constraints.txt \
+    timm==1.0.27 transformers==5.8.0 sentence-transformers==5.5.1 \
+    accelerate==1.13.0 hf-xet==1.5.0 xformers==0.0.35 \
+    peft==0.19.1
 
   echo 'export MAMBA_ROOT_PREFIX=/opt/env/micromamba' >> $SINGULARITY_ENVIRONMENT
   echo 'eval "$(micromamba shell hook -s posix)"' >> $SINGULARITY_ENVIRONMENT

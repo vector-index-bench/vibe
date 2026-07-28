@@ -23,7 +23,7 @@ from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-from .runner import load_and_transform_dataset
+from .runner import load_and_transform_dataset, load_ood_data
 from .util import download
 
 
@@ -346,6 +346,46 @@ class HuggingFaceDataset(Dataset):
             documents = [" ".join(ds[a][i] for a in attribute) for i in range(len(ds[attribute[0]]))]
         else:
             documents = ds[attribute]
+
+        if deduplicate:
+            documents = list(set(documents))
+
+        self.documents = documents
+
+    def __len__(self):
+        return len(self.documents)
+
+    def __getitem__(self, index):
+        return self.documents[index]
+
+
+class BeIRDataset(Dataset):
+    def __init__(self, name, corpus_or_queries, subset, deduplicate=True):
+        import json
+
+        url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{name}.zip"
+        data_dir = f"{VIBE_CACHE}/data/beir/"
+        os.makedirs(data_dir, exist_ok=True)
+
+        zip_path = os.path.join(data_dir, f"{name}.zip")
+        extract_dir = os.path.join(data_dir, name)
+
+        if not os.path.exists(extract_dir):
+            download(url, zip_path)
+            extract_archive(zip_path, data_dir, remove=False)
+
+        if corpus_or_queries == "corpus":
+            jsonl_path = os.path.join(extract_dir, "corpus.jsonl")
+        elif corpus_or_queries == "queries":
+            jsonl_path = os.path.join(extract_dir, "queries.jsonl")
+        else:
+            raise ValueError(f"corpus_or_queries must be 'corpus' or 'queries', got {corpus_or_queries}")
+
+        documents = []
+        with open(jsonl_path, "r") as f:
+            for line in f:
+                doc = json.loads(line)
+                documents.append((doc.get("title", "") + " " + doc["text"]).strip())
 
         if deduplicate:
             documents = list(set(documents))
@@ -684,20 +724,7 @@ def distilroberta_embed(doc_type="corpus"):
 def mxbai_embed(doc_type="corpus"):
     from sentence_transformers import SentenceTransformer
 
-    model = SentenceTransformer("mixedbread-ai/mxbai-embed-large-v1")
-
-    def f(sentences):
-        if doc_type == "query":
-            return model.encode(sentences, prompt_name="query")
-        return model.encode(sentences)
-
-    return f
-
-
-def snowflake_embed(model="arctic-embed-m-v2.0", doc_type="corpus"):
-    from sentence_transformers import SentenceTransformer
-
-    model = SentenceTransformer(f"Snowflake/snowflake-{model}", trust_remote_code=True)
+    model = SentenceTransformer("mixedbread-ai/mxbai-embed-large-v1", model_kwargs={"torch_dtype": torch.float32})
 
     def f(sentences):
         if doc_type == "query":
@@ -714,36 +741,70 @@ def gemma_embed(doc_type="corpus"):
 
     def f(sentences):
         if doc_type == "query":
-            return model.encode_query(sentences)
-        return model.encode_document(sentences)
+            return model.encode_query(sentences, batch_size=128, normalize_embeddings=True)
+        return model.encode_document(sentences, batch_size=128, normalize_embeddings=True)
 
     return f
 
 
-def potion_embed(doc_type="corpus"):
-    from model2vec import StaticModel
+def jina_embed(doc_type="corpus", task="retrieval"):
+    from sentence_transformers import SentenceTransformer
 
-    model = StaticModel.from_pretrained("minishlab/potion-retrieval-32M")
-    return model.encode
-
-
-def muvera_embed(k_sim=5, dim_proj=8, doc_type="corpus"):
-    from fastembed import LateInteractionTextEmbedding
-    from fastembed.postprocess import Muvera
-
-    if torch.accelerator.is_available():
-        providers = ["CUDAExecutionProvider"]
-    else:
-        providers = ["CPUExecutionProvider"]
-
-    model = LateInteractionTextEmbedding(
-        "colbert-ir/colbertv2.0", lazy_load=True, cache_dir=VIBE_CACHE, providers=providers
-    )
-    muvera = Muvera.from_multivector_model(model, k_sim=k_sim, dim_proj=dim_proj, r_reps=20)
+    model = SentenceTransformer("jinaai/jina-embeddings-v5-text-nano", trust_remote_code=True, revision="refs/pr/11")
 
     def f(sentences):
-        g = muvera.process_document if doc_type == "corpus" else muvera.process_query
-        return numpy.array([g(mv) for mv in model.embed(sentences)])
+        prompt_name = "query" if doc_type == "query" else "document"
+        return model.encode(sentences, task=task, prompt_name=prompt_name)
+
+    return f
+
+
+def qwen_embed(doc_type="corpus"):
+    from sentence_transformers import SentenceTransformer
+
+    model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B")
+
+    def f(sentences):
+        prompt_name = "query" if doc_type == "query" else "document"
+        return model.encode(sentences, batch_size=128, prompt_name=prompt_name)
+
+    return f
+
+
+def voyage_embed(doc_type="corpus"):
+    from sentence_transformers import SentenceTransformer
+
+    model = SentenceTransformer("voyageai/voyage-4-nano", trust_remote_code=True, truncate_dim=2048)
+    model.max_seq_length = 2048
+
+    def f(sentences):
+        if doc_type == "query":
+            return model.encode_query(sentences, batch_size=128, normalize_embeddings=True)
+        return model.encode_document(sentences, batch_size=128, normalize_embeddings=True)
+
+    return f
+
+
+def harrier_embed(doc_type="corpus", query_prompt_name="web_search_query"):
+    from sentence_transformers import SentenceTransformer
+
+    model = SentenceTransformer("microsoft/harrier-oss-v1-270m", model_kwargs={"dtype": "auto"})
+
+    def f(sentences):
+        if doc_type == "query":
+            return model.encode(sentences, prompt_name=query_prompt_name, normalize_embeddings=True)
+        return model.encode(sentences, normalize_embeddings=True)
+
+    return f
+
+
+def pplx_embed(doc_type="corpus"):
+    from sentence_transformers import SentenceTransformer
+
+    model = SentenceTransformer("perplexity-ai/pplx-embed-v1-0.6b", trust_remote_code=True)
+
+    def f(sentences):
+        return model.encode(sentences).astype(numpy.int8)
 
     return f
 
@@ -787,17 +848,6 @@ def jina_code_embed():
 
     def f(codes):
         return model.encode(codes)
-
-    return f
-
-
-def jina_embed(task="text-matching"):
-    from sentence_transformers import SentenceTransformer
-
-    model = SentenceTransformer("jinaai/jina-embeddings-v3", trust_remote_code=True)
-
-    def f(sentences):
-        return model.encode(sentences, task=task, prompt_name=task)
 
     return f
 
@@ -860,7 +910,14 @@ def embedding_dataset(
             learn_embeddings.append(query_embedding(batch))
         learn_embeddings = numpy.vstack(learn_embeddings)
 
-    write_output(out_fn, corpus_embeddings, query_embeddings, learn_embeddings, distance=metric)
+    if corpus_embeddings.dtype == numpy.uint8 and query_embeddings.dtype == numpy.uint8:
+        point_type = "uint8"
+    elif corpus_embeddings.dtype == numpy.int8 and query_embeddings.dtype == numpy.int8:
+        point_type = "int8"
+    else:
+        point_type = "float"
+
+    write_output(out_fn, corpus_embeddings, query_embeddings, learn_embeddings, distance=metric, point_type=point_type)
 
 
 def text_embedding_dataset(
@@ -873,11 +930,19 @@ def text_embedding_dataset(
     subset=None,
     ood=False,
     metric="cosine",
+    dataset_type="huggingface",
+    test_size=1000,
 ):
-    test_size = 1000
     batch_size = 256
 
-    dataset = HuggingFaceDataset(dataset_name, attribute, subset)
+    if dataset_type == "huggingface":
+        DatasetClass = HuggingFaceDataset
+    elif dataset_type == "beir":
+        DatasetClass = BeIRDataset
+    else:
+        raise ValueError(f"dataset_type must be 'huggingface' or 'beir', got {dataset_type}")
+
+    dataset = DatasetClass(dataset_name, attribute, subset)
     generator = torch.Generator().manual_seed(42)
 
     if query_attribute is None or not ood:
@@ -886,7 +951,7 @@ def text_embedding_dataset(
         query_dataloader = DataLoader(queries, batch_size=batch_size, shuffle=False, num_workers=0)
         learn_dataloader = None
     else:
-        query_dataset = HuggingFaceDataset(dataset_name, query_attribute, subset)
+        query_dataset = DatasetClass(dataset_name, query_attribute, subset)
         learn, queries = random_split(query_dataset, [len(query_dataset) - test_size, test_size], generator=generator)
         corpus_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
         query_dataloader = DataLoader(queries, batch_size=batch_size, shuffle=False, num_workers=0)
@@ -1041,8 +1106,73 @@ def agnews(out_fn, embedding, query_embedding=None, metric="normalized"):
 
 def codesearchnet(out_fn, embedding, query_embedding=None, metric="normalized"):
     text_embedding_dataset(
-        out_fn, "sentence-transformers/codesearchnet", "code", None, embedding, query_embedding, metric=metric
+        out_fn,
+        "sentence-transformers/codesearchnet",
+        "code",
+        "comment",
+        embedding,
+        query_embedding,
+        ood=True,
+        metric=metric,
     )
+
+
+def msmarco(out_fn, embedding, query_embedding=None, metric="normalized"):
+    text_embedding_dataset(
+        out_fn,
+        "msmarco",
+        "corpus",
+        "queries",
+        embedding,
+        query_embedding,
+        metric=metric,
+        dataset_type="beir",
+    )
+
+
+def hotpotqa(out_fn, embedding, query_embedding=None, metric="normalized"):
+    text_embedding_dataset(
+        out_fn,
+        "hotpotqa",
+        "corpus",
+        "queries",
+        embedding,
+        query_embedding,
+        subset=None,
+        ood=True,
+        metric=metric,
+        dataset_type="beir",
+    )
+
+
+def nq(out_fn, embedding, query_embedding=None, metric="normalized"):
+    text_embedding_dataset(
+        out_fn,
+        "nq",
+        "corpus",
+        "queries",
+        embedding,
+        query_embedding,
+        metric=metric,
+        dataset_type="beir",
+    )
+
+
+def quora(out_fn, embedding, query_embedding=None, metric="normalized"):
+    text_embedding_dataset(
+        out_fn,
+        "quora",
+        "corpus",
+        "queries",
+        embedding,
+        query_embedding,
+        metric=metric,
+        dataset_type="beir",
+    )
+
+
+def dpr(out_fn, embedding, query_embedding=None, metric="normalized"):
+    text_embedding_dataset(out_fn, "seonglae/wiki_dpr_token", "text", None, embedding, query_embedding, metric=metric)
 
 
 def _read_fbin(filename: str, start_row: int = 0, count_rows=None):
@@ -1236,15 +1366,107 @@ def ood_to_id_dataset(out_fn, original_dataset):
     write_output(out_fn, X_train, X_test, X_train, distance=distance)
 
 
+def lemur(out_fn, original_dataset, metric="ip"):
+    def compute_features_batched(learn, learn_counts, batch_size=1024):
+        offsets = numpy.concatenate([[0], numpy.cumsum(learn_counts)])
+
+        outputs = []
+
+        for i in range(0, len(learn_counts), batch_size):
+            j = min(i + batch_size, len(learn_counts))
+
+            row_start = int(offsets[i])
+            row_end = int(offsets[j])
+
+            batch_learn = learn[row_start:row_end]
+            batch_counts = learn_counts[i:j]
+
+            X_batch = lemur.compute_features((batch_learn, batch_counts)).cpu().numpy()
+            outputs.append(X_batch)
+
+        return numpy.concatenate(outputs, axis=0)
+
+    try:
+        train, train_counts, test, test_counts, learn, learn_counts, distance = load_and_transform_dataset(
+            original_dataset
+        )
+    except:
+        raise ValueError(f"failed to load {original_dataset} -- make sure the original dataset exists first")
+
+    from lemur import Lemur
+
+    lemur = Lemur(index="lemur_index", device="cuda")
+    lemur.fit(
+        train=train.astype(numpy.float32),
+        train_counts=train_counts.astype(numpy.int32),
+        epochs=100,
+        verbose=True,
+    )
+
+    lemur.device = torch.device("cpu")
+    lemur.mlp = lemur.mlp.to("cpu")
+    lemur.W = lemur.W.to("cpu")
+
+    X_train = numpy.ascontiguousarray(lemur.W.numpy())
+
+    X_test = compute_features_batched(test, test_counts)
+    X_learn = compute_features_batched(learn, learn_counts)
+
+    write_output(out_fn, X_train, X_test, X_learn, distance=metric)
+
+
+def muvera(out_fn, original_dataset, metric="ip"):
+    try:
+        train, train_counts, test, test_counts, learn, learn_counts, distance = load_and_transform_dataset(
+            original_dataset
+        )
+    except:
+        raise ValueError(f"failed to load {original_dataset} -- make sure the original dataset exists first")
+
+    import fde
+    import copy
+
+    r_reps = 40
+    k_sim = 6
+    final_dim = 5120
+
+    document_config = fde.FDEConfig()
+    document_config.dimension = 128
+    document_config.num_repetitions = r_reps
+    document_config.num_simhash_projections = k_sim
+    document_config.fill_empty_partitions = True
+    document_config.projection_dimension = document_config.dimension
+    if document_config.projection_dimension != document_config.dimension:
+        document_config.projection_type = fde.AMS_SKETCH
+
+    if final_dim > 0:
+        document_config.final_projection_dimension = final_dim
+
+    query_config = copy.copy(document_config)
+    query_config.fill_empty_partitions = False
+
+    X_train = fde.generate_document_fixed_dimensional_encoding_batch(
+        train.astype(numpy.float32), train_counts, document_config, num_threads=10
+    )
+
+    X_test = fde.generate_query_fixed_dimensional_encoding_batch(
+        test.astype(numpy.float32), test_counts, query_config, num_threads=10
+    )
+    X_learn = fde.generate_query_fixed_dimensional_encoding_batch(
+        learn.astype(numpy.float32), learn_counts, query_config, num_threads=10
+    )
+
+    write_output(out_fn, X_train, X_test, X_learn, distance=metric)
+
+
 DATASETS: Dict[str, Callable[[str], None]] = {
     "agnews-mxbai-1024-euclidean": lambda out_fn: agnews(out_fn, mxbai_embed(), metric="euclidean"),
     "agnews-mxbai-1024-euclidean-uint8": lambda out_fn: uint8_dataset(out_fn, "agnews-mxbai-1024-euclidean"),
     "agnews-mxbai-1024-hamming-binary": lambda out_fn: binary_dataset(out_fn, "agnews-mxbai-1024-euclidean"),
+    "agnews-pplx-1024-cosine-int8": lambda out_fn: agnews(out_fn, pplx_embed(), metric="cosine"),
     "arxiv-nomic-768-normalized": lambda out_fn: arxiv(
         out_fn, nomic_embed("clustering"), nomic_embed("clustering"), metric="normalized"
     ),
-    "arxiv-nomic-768-euclidean-uint8": lambda out_fn: uint8_dataset(out_fn, "arxiv-nomic-768-normalized"),
-    "arxiv-nomic-768-hamming-binary": lambda out_fn: binary_dataset(out_fn, "arxiv-nomic-768-normalized"),
     "ccnews-nomic-768-euclidean-uint8": lambda out_fn: uint8_dataset(out_fn, "ccnews-nomic-768-normalized"),
     "ccnews-nomic-768-hamming-binary": lambda out_fn: binary_dataset(out_fn, "ccnews-nomic-768-normalized"),
     "ccnews-nomic-768-normalized": lambda out_fn: ccnews(out_fn, nomic_embed()),
@@ -1253,8 +1475,14 @@ DATASETS: Dict[str, Callable[[str], None]] = {
         out_fn, nomic_vision_embedding, nomic_embed("query"), metric="normalized"
     ),
     "codesearchnet-jina-768-cosine": lambda out_fn: codesearchnet(out_fn, jina_code_embed(), metric="cosine"),
+    "cqadupstack-lemur-2048-ip": lambda out_fn: lemur(out_fn, "cqadupstack-colbert-128-chamfer"),
+    "cqadupstack-muvera-5120-ip": lambda out_fn: muvera(out_fn, "cqadupstack-colbert-128-chamfer"),
+    "dpr-jina-768-euclidean-uint8": lambda out_fn: uint8_dataset(out_fn, "dpr-jina-768-normalized"),
+    "dpr-jina-768-hamming-binary": lambda out_fn: binary_dataset(out_fn, "dpr-jina-768-normalized"),
+    "dpr-jina-768-normalized": lambda out_fn: dpr(out_fn, jina_embed("corpus"), jina_embed("query")),
     "glove-200-cosine": lambda out_fn: glove(out_fn, 200),
     "gooaq-distilroberta-768-normalized": lambda out_fn: gooaq(out_fn, distilroberta_embed()),
+    "hotpotqa-harrier-640-normalized": lambda out_fn: hotpotqa(out_fn, harrier_embed("corpus"), harrier_embed("query")),
     "imagenet-align-640-normalized": lambda out_fn: imagenet_captions(
         out_fn, align_image_embedding, align_text_embedding(), metric="normalized"
     ),
@@ -1265,14 +1493,11 @@ DATASETS: Dict[str, Callable[[str], None]] = {
     "landmark-nomic-768-hamming-binary": lambda out_fn: binary_dataset(out_fn, "landmark-nomic-768-normalized"),
     "landmark-nomic-768-normalized": lambda out_fn: landmark(out_fn, nomic_vision_embedding, metric="normalized"),
     "llama-128-ip": lambda out_fn: llama(out_fn, 12, 15),
+    "msmarco-qwen-1024-normalized": lambda out_fn: msmarco(out_fn, qwen_embed("corpus"), qwen_embed("query")),
     "simplewiki-openai-3072-euclidean-uint8": lambda out_fn: uint8_dataset(out_fn, "simplewiki-openai-3072-normalized"),
     "simplewiki-openai-3072-hamming-binary": lambda out_fn: binary_dataset(out_fn, "simplewiki-openai-3072-normalized"),
     "simplewiki-openai-3072-normalized": lambda out_fn: simplewiki(out_fn, litellm_embed("text-embedding-3-large")),
     "yahoo-minilm-384-normalized": lambda out_fn: yahoo_answers(out_fn, minilm_embed()),
     "yandex-200-cosine": lambda out_fn: yandex(out_fn, "cosine"),
     "yi-128-ip": lambda out_fn: yi(out_fn, 31, 13),
-    "laion-clip-id-512-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "laion-clip-512-normalized"),
-    "yandex-id-200-cosine": lambda out_fn: ood_to_id_dataset(out_fn, "yandex-200-cosine"),
-    "imagenet-align-id-640-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "imagenet-align-640-normalized"),
-    "coco-nomic-id-768-normalized": lambda out_fn: ood_to_id_dataset(out_fn, "coco-nomic-768-normalized"),
 }
