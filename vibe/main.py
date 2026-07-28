@@ -174,7 +174,7 @@ def parse_arguments() -> argparse.Namespace:
         "--timeout",
         type=int,
         help="Timeout (in seconds) for each individual algorithm run, or -1 if no timeout should be set",
-        default=4 * 3600,
+        default=24 * 3600,
     )
     parser.add_argument(
         "--local",
