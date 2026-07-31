@@ -167,6 +167,8 @@ export VIBE_CACHE=$LOCAL_SCRATCH
 
 ### Adding a new method to the benchmark
 
+VIBE is an on-going effort and we actively welcome new additions to the benchmarks.
+
 Add your algorithm in the folder `vibe/algorithms/{METHOD}/` by providing
 
 - Python wrapper in module.py
