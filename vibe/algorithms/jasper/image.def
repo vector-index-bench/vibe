@@ -1,0 +1,60 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+    mkdir -p /cache
+    export TMPDIR=/cache
+
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+    apt-get update
+    apt-get install -y libssl-dev
+
+    CUDA_VERSION="12.8.1"
+    CUDA_INSTALLER="cuda_12.8.1_570.124.06_linux.run"
+    wget https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_INSTALLER}
+
+    chmod +x ${CUDA_INSTALLER}
+    ./${CUDA_INSTALLER} --silent --toolkit --override
+    rm ${CUDA_INSTALLER}
+
+    export PATH=/usr/local/cuda/bin:${PATH}
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+
+    # The CUDA runfile installer's --toolkit component does not reliably ship
+    # CCCL's pre-rendered CMake package configs (thrust-config.cmake etc.), so
+    # find_package(Thrust) fails even though the Thrust headers are present.
+    # Fetch CCCL directly, which checks in lib/cmake/{thrust,cub,libcudacxx}.
+    git clone --depth 1 --branch v2.8.5 https://github.com/NVIDIA/cccl.git /opt/cccl
+    export CMAKE_PREFIX_PATH=/opt/cccl:${CMAKE_PREFIX_PATH}
+
+    # Jasper.search() takes CUDA torch tensors, so we need a CUDA-enabled torch build
+    # (unlike e.g. ggnn, which only needs the CPU wheel).
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu128
+    pip install --no-cache-dir apache-tvm-ffi
+
+    git clone https://github.com/saltsystemslab/Jasper
+    cd Jasper
+    git config --global --add safe.directory '*'
+    git reset --hard 23647b9bad178a917e3628ff954c6aa749b9e5b9
+    # Submodules are registered with git@github.com: SSH URLs, which need an SSH
+    # key/agent that doesn't exist in this anonymous build container. Rewrite them
+    # to plain HTTPS so `git submodule update` can fetch without authentication.
+    git config --global "url.https://github.com/.insteadOf" "git@github.com:"
+    git submodule update --init --recursive
+
+    cmake -B build -DJASPER_BUILD_FFI=ON -DJASPER_BUILD_CMD=OFF -DCMAKE_PREFIX_PATH=/opt/cccl -DCMAKE_CUDA_ARCHITECTURES="90;120"
+    cmake --build build -j
+
+    # The build doesn't install libjasper_ffi.so into python/jasper/lib/, which is
+    # where tvm_ffi.load_module() looks for it at import time, so copy it manually.
+    mkdir -p python/jasper/lib
+    find build -name "libjasper_ffi.so" -exec cp {} python/jasper/lib/libjasper_ffi.so \;
+    test -f python/jasper/lib/libjasper_ffi.so || { echo "libjasper_ffi.so not found under build/"; exit 1; }
+
+    pip install -e python/
+
+%environment
+    export PATH=/usr/local/cuda/bin:${PATH}
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
