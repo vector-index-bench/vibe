@@ -273,8 +273,8 @@ def random_sample(X: numpy.ndarray, size: int = 1000, seed: int = 1) -> numpy.nd
 def extract_archive(archive_file, extract_dir, remove=False):
     print("Extracting %s..." % archive_file)
 
-    if archive_file.endswith(".tar"):
-        with tarfile.open(archive_file, "r") as tar:
+    if archive_file.endswith((".tar", ".tar.gz", ".tgz")):
+        with tarfile.open(archive_file, "r:*") as tar:
             tar.extractall(path=extract_dir)
     elif archive_file.endswith(".zip"):
         with zipfile.ZipFile(archive_file, "r") as zip_ref:
@@ -290,7 +290,7 @@ def extract_dir(path, target_dir, remove=False):
     archive_files = []
     for root, _, files in os.walk(path):
         for file in files:
-            if file.endswith((".zip", ".tar")):
+            if file.endswith((".zip", ".tar", ".tar.gz", ".tgz")):
                 archive_files.append(os.path.join(root, file))
 
     extract_fn = partial(extract_archive, extract_dir=target_dir, remove=remove)
@@ -972,6 +972,16 @@ def celeba_loader(transform):
     return ArchivedImageDataset(data_dir + fn, DATA_EXTRACT_DIR + "/celeba", transform)
 
 
+def inaturalist_mini_loader(transform):
+    data_dir = "./data/inaturalist_mini/"
+    fn = "train_mini.tar.gz"
+
+    os.makedirs(data_dir, exist_ok=True)
+    download("https://ml-inat-competition-datasets.s3.amazonaws.com/2021/train_mini.tar.gz", data_dir + fn)
+
+    return ArchivedImageDataset(data_dir + fn, DATA_EXTRACT_DIR + "/inaturalist_mini/extracted", transform)
+
+
 def landmark_loader(transform):
     data_dir = "./data/landmark/"
 
@@ -1054,6 +1064,11 @@ def imagenet(out_fn, embedding, metric="cosine"):
 def celeba(out_fn, embedding, metric="cosine"):
     embedding_func, transform = embedding()
     image_embedding_dataset(out_fn, celeba_loader(transform), embedding_func, None, embedding_func, metric)
+
+
+def inaturalist(out_fn, embedding, metric="cosine"):
+    embedding_func, transform = embedding()
+    image_embedding_dataset(out_fn, inaturalist_mini_loader(transform), embedding_func, None, embedding_func, metric)
 
 
 def landmark(out_fn, embedding, metric="cosine"):
@@ -1487,6 +1502,7 @@ DATASETS: Dict[str, Callable[[str], None]] = {
         out_fn, align_image_embedding, align_text_embedding(), metric="normalized"
     ),
     "imagenet-clip-512-normalized": lambda out_fn: imagenet(out_fn, clip_image_embedding, metric="normalized"),
+    "inaturalist-resnet-2048-cosine": lambda out_fn: inaturalist(out_fn, resnet_embedding),
     "laion-clip-512-normalized": lambda out_fn: laion(out_fn, "normalized"),
     "landmark-dino-768-cosine": lambda out_fn: landmark(out_fn, dino_embedding),
     "landmark-nomic-768-euclidean-uint8": lambda out_fn: uint8_dataset(out_fn, "landmark-nomic-768-normalized"),
