@@ -33,13 +33,18 @@ from vibe.main import filter_disabled_algorithms, filter_algorithms_by_device
 ID_DATASETS = [
     "agnews-mxbai-1024-euclidean",
     "arxiv-nomic-768-normalized",
-    "dpr-jina-768-normalized",
     "gooaq-distilroberta-768-normalized",
     "imagenet-clip-512-normalized",
     "landmark-dino-768-cosine",
-    "landmark-nomic-768-normalized",
     "msmarco-qwen-1024-normalized",
     "yahoo-minilm-384-normalized",
+]
+
+ID_DATASETS_ADDITIONAL = [
+    "dpr-jina-768-normalized",
+    "glove-200-cosine",
+    "inaturalist-resnet-2048-cosine",
+    "landmark-nomic-768-normalized",
 ]
 
 # The list of out of distribution datasets
@@ -153,8 +158,10 @@ def radar_at_recall_plot(
     k=100,
     gpu=False,
 ):
-    data = data.filter(pl.col("dataset").is_in(ID_DATASETS + OOD_DATASETS)).filter(
-        pl.col("algorithm").is_in(all_algorithms)
+    data = (
+        data.filter(pl.col("dataset").is_in(ID_DATASETS + OOD_DATASETS))
+        .filter(~pl.col("dataset").str.ends_with("-ip"))
+        .filter(pl.col("algorithm").is_in(all_algorithms))
     )
     datasets = data["dataset"].unique().to_list()
     expected_combinations = pl.DataFrame({"dataset": datasets}).join(
@@ -189,12 +196,12 @@ def radar_at_recall_plot(
         .select("algorithm", "dataset", "qps_frac", "dataset-type")
     )
 
-    avg_rc = query_stats.group_by("dataset").agg(pl.col("rc100").mean())
+    median_rc = query_stats.group_by("dataset").agg(pl.col("rc100").median())
 
     dataset_order = (
         plot_data.select("dataset", "dataset-type")
         .unique()
-        .join(avg_rc, on=["dataset"])
+        .join(median_rc, on=["dataset"])
         .with_columns(~pl.col("dataset").str.contains("-ip").alias("is-ip"))
         .sort("dataset-type", "is-ip", "rc100", "dataset")
     )["dataset"].to_list()
@@ -262,6 +269,9 @@ def radar_at_recall_plot(
         ax=axs[0],
         theta_offset=theta_offset,
     )
+
+    for text in fig.findobj(match=mpl.text.Text):
+        text.set_fontsize(text.get_fontsize() - 1)
 
     plt.tight_layout()
     gpu_suffix = "-gpu" if gpu else ""
@@ -631,12 +641,12 @@ def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
     import numpy as np
 
     query_stats = (
-        query_stats.filter(pl.col("dataset").is_in(ID_DATASETS + OOD_DATASETS))
+        query_stats.filter(pl.col("dataset").is_in(ID_DATASETS + ID_DATASETS_ADDITIONAL + OOD_DATASETS))
         .filter(~pl.col("dataset").str.contains("-ip"))
         .filter(pl.col(x) >= 1)
         .with_columns(mean_x=pl.col(x).mean().over("dataset"))
         .with_columns(
-            pl.when(pl.col("dataset").is_in(ID_DATASETS))
+            pl.when(pl.col("dataset").is_in(ID_DATASETS + ID_DATASETS_ADDITIONAL))
             .then(pl.lit("in-distribution"))
             .when(pl.col("dataset").is_in(OOD_DATASETS))
             .then(pl.lit("out-of-distribution"))
@@ -666,16 +676,19 @@ def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
         logprob = kde.score_samples(x_d[:, None])
 
         offset = (len(datasets) - i - 1) * 1.5
-        color = "tab:blue" if dataset in ID_DATASETS else "tab:orange"
+        color = "tab:blue" if dataset in ID_DATASETS + ID_DATASETS_ADDITIONAL else "tab:orange"
         ax.plot(x_d, offset + np.exp(logprob), color="#f0f0f0", lw=1, zorder=2 * i + 1)
         ax.fill_between(x_d, offset + np.exp(logprob), offset, alpha=1, zorder=2 * i, color=color)
         label = "-".join(dataset.split("-")[:-2])
         ax.annotate(label, (3.5, offset), ha="right", va="bottom", color=color)
 
+    x_label = (
+        rf"\mathrm{{RC}}_{{{x[2:]}}}" if x.startswith("rc") and x[2:].isdigit() else rf"\mathrm{{{x}}}"
+    )
     if log:
-        ax.set_xlabel(f"log({x})")
+        ax.set_xlabel(rf"$\log({x_label})$")
     else:
-        ax.set_xlabel(f"{x}")
+        ax.set_xlabel(rf"${x_label}$")
 
     ax.set_yticklabels([])
     ax.set_yticks([])
@@ -839,9 +852,11 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
 
     for datasets in [
         ["agnews-mxbai-1024-euclidean", "arxiv-nomic-768-normalized"],
-        ["gooaq-distilroberta-768-normalized", "imagenet-clip-512-normalized"],
+        ["glove-200-cosine", "gooaq-distilroberta-768-normalized"],
+        ["imagenet-clip-512-normalized", "inaturalist-resnet-2048-cosine"],
         ["landmark-dino-768-cosine", "landmark-nomic-768-normalized"],
         ["msmarco-qwen-1024-normalized", "yahoo-minilm-384-normalized"],
+        ["imagenet-clip-512-normalized", "landmark-nomic-768-normalized"],
     ]:
         pareto_plot(
             out_dir,
@@ -924,6 +939,50 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         separate_legend=True,
     )
 
+    pareto_plot(
+        out_dir,
+        summary,
+        pca_mahalanobis=pca_mahalanobis,
+        datasets=["cqadupstack-muvera-5120-ip"],
+        algorithms=[
+            "glass",
+            "hnswlib",
+            "ivf(faiss)",
+            "ivfpqfs(faiss)",
+            "lorann",
+            "mlann-rf",
+            "pynndescent",
+            "roargraph",
+            "scann",
+        ],
+        xlim=(0.2, 1),
+        ylim=(1e1, 2e3),
+        figsize=(4, 3),
+        separate_legend=True,
+    )
+
+    pareto_plot(
+        out_dir,
+        summary,
+        pca_mahalanobis=pca_mahalanobis,
+        datasets=["llama-128-ip"],
+        algorithms=[
+            "glass",
+            "hnswlib",
+            "ivf(faiss)",
+            "ivfpqfs(faiss)",
+            "lorann",
+            "mlann-rf",
+            "pynndescent",
+            "roargraph",
+            "scann",
+        ],
+        xlim=(0, 1),
+        ylim=(1e2, 3e4),
+        figsize=(4, 3),
+        separate_legend=True,
+    )
+
     split_difficulties_plot(
         out_dir,
         summary,
@@ -990,7 +1049,7 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         summary,
         detail,
         0.95,
-        ID_DATASETS + OOD_DATASETS,
+        ID_DATASETS + ID_DATASETS_ADDITIONAL + OOD_DATASETS,
         output=out_dir,
         algorithms=selected,
         significance_level=0.01,
@@ -1090,7 +1149,6 @@ def latency_difference_plot(
     for dataset in datasets:
         G = graphs[dataset]
         groups = [c for c in networkx.find_cliques(G) if len(c) > 1]
-        plt.figure(figsize=(8, 2))
         pdata = tests.filter(pl.col("dataset") == dataset)
         pdata = (
             pl.concat(
@@ -1102,7 +1160,11 @@ def latency_difference_plot(
             .unique()
             .sort("latency")
         )
+        if pdata.is_empty():
+            print(f"Skipping {dataset}: no pairwise latency data at recall >= {recall} and k = {k}")
+            continue
 
+        plt.figure(figsize=(8, 2))
         algos = pdata["algorithm"].to_numpy()
         times = pdata["latency"].to_numpy()
         minx, maxx = times[0], times[-1]
@@ -1147,12 +1209,14 @@ def print_metric_table(data, recall=0.9, k=100, algorithms=None, metric="build_t
     filtered_datasets = [
         "agnews-mxbai-1024-euclidean",
         "arxiv-nomic-768-normalized",
+        "glove-200-cosine",
         "gooaq-distilroberta-768-normalized",
         "imagenet-clip-512-normalized",
-        "landmark-nomic-768-normalized",
-        "yahoo-minilm-384-normalized",
+        "inaturalist-resnet-2048-cosine",
         "landmark-dino-768-cosine",
+        "landmark-nomic-768-normalized",
         "msmarco-qwen-1024-normalized",
+        "yahoo-minilm-384-normalized",
     ]
 
     filtered_data = data.filter(pl.col("k") == k).filter(pl.col("dataset").is_in(filtered_datasets))
@@ -1716,13 +1780,13 @@ if __name__ == "__main__":
         algorithms = [
             "glass",
             "hnswlib",
+            "ivf(faiss)",
             "ivfpqfs(faiss)",
             "lorann",
-            "ngt-onng",
             "ngt-qg",
+            "pynndescent",
             "scann",
             "symphonyqg",
-            "vamana-lvq(svs)",
         ]
     else:
         algorithms = all_algorithms
@@ -1797,7 +1861,7 @@ if __name__ == "__main__":
             summary,
             detail,
             float(args.recall),
-            ID_DATASETS + OOD_DATASETS,
+            ID_DATASETS + ID_DATASETS_ADDITIONAL + OOD_DATASETS,
             output=args.output,
             algorithms=algorithms,
             k=count,
