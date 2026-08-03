@@ -1,0 +1,32 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update
+  apt-get install -y ca-certificates clang-18 cmake gfortran libomp-18-dev make python3-dev wget
+
+  git clone --depth 1 https://github.com/OpenMathLib/OpenBLAS.git /opt/OpenBLAS
+  cd /opt/OpenBLAS
+  make -j$(nproc) DYNAMIC_ARCH=1 USE_OPENMP=1 NUM_THREADS=128
+  make -j$(nproc) PREFIX=/usr/local install
+  ldconfig
+
+  wget -O /tmp/fftw-3.3.10.tar.gz https://www.fftw.org/fftw-3.3.10.tar.gz
+  tar -xzf /tmp/fftw-3.3.10.tar.gz -C /tmp
+  cd /tmp/fftw-3.3.10
+  ./configure --prefix=/usr/local --enable-float --enable-shared --enable-openmp
+  make -j$(nproc)
+  make install
+  ldconfig
+
+  git clone --recurse-submodules https://github.com/cwida/PDX /opt/pdx
+  cd /opt/pdx
+  git config --global --add safe.directory /opt/pdx
+  git reset --hard 93531b9f9cc00cb3e5b713491daf1786fe5e3865
+  git submodule update --init --recursive
+
+  export CC=/usr/bin/clang-18
+  export CXX=/usr/bin/clang++-18
+  export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH
+  pip install --no-cache-dir .

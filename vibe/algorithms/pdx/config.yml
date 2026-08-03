@@ -1,0 +1,36 @@
+uint8:
+  euclidean:
+  - base_args: ['@metric', '@dimension']
+    constructor: PDX
+    disabled: false
+    singularity_image: pdx
+    module: vibe.algorithms.pdx
+    name: pdx
+    run_groups:
+      tree-sq8:
+        args:
+          index_type: [tree_sq8]
+          num_clusters: [0]
+          num_meso_clusters: [0]
+          sampling_fraction: [0.0]
+          kmeans_iters: [10]
+        query_args:
+          n_probe: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+float:
+  any:
+  - base_args: ['@metric', '@dimension']
+    constructor: PDX
+    disabled: false
+    singularity_image: pdx
+    module: vibe.algorithms.pdx
+    name: pdx
+    run_groups:
+      tree-sq8:
+        args:
+          index_type: [tree_sq8]
+          num_clusters: [0]
+          num_meso_clusters: [0]
+          sampling_fraction: [0.0]
+          kmeans_iters: [10]
+        query_args:
+          n_probe: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
