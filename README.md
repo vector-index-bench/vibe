@@ -249,6 +249,7 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [NGT-ONNG](https://github.com/yahoojapan/NGT/) | 2.7.4 |
 | [NGT-QG](https://github.com/yahoojapan/NGT/) | 2.7.4 |
 | [NSG](https://github.com/facebookresearch/faiss) | 1.14.3 |
+| [PAG](https://github.com/KejingLu-810/PAG) | git+ee34ed7 |
 | [PDX](https://github.com/cwida/PDX) | git+93531b9 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.6.0 |

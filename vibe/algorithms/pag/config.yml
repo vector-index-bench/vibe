@@ -1,0 +1,17 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: PAG
+    disabled: false
+    singularity_image: pag
+    module: vibe.algorithms.pag
+    name: pag
+    run_groups:
+      base:
+        args:
+          efConstruction: [500]
+          targetDegree: [32, 64, 128]
+          projectionLevels: [16, 32, 64, 128]
+          maxSearchK: [100]
+        query_args:
+          ef: [100, 150, 200, 300, 400, 500, 600, 800, 1000]

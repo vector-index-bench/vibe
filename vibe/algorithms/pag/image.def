@@ -1,0 +1,18 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  git clone https://github.com/KejingLu-810/PAG.git
+
+  cd /PAG
+  git config --global --add safe.directory /PAG
+  git reset --hard ee34ed78b7a28225b2db6210ad942152e1cd540d
+
+  pip install --no-cache-dir scikit-build-core
+
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPAG_BUILD_EXAMPLES=OFF -DPAG_NATIVE_ARCH=ON
+  cmake --build build -j 4
+  cmake --build build --target install
+  ldconfig
+
+  pip install --no-cache-dir --no-build-isolation --no-deps .
