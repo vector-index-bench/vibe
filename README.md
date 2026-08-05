@@ -236,7 +236,7 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
 | [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
 | [IVF-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | git+5ea4df0 |
-| [Jasper](https://github.com/saltsystemslab/Jasper) | git+3355045 |
+| [Jasper](https://github.com/saltsystemslab/Jasper) | git+23647b9 |
 | [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
 | [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
 | [LoRANN](https://github.com/ejaasaari/lorann) | 0.4.5 |
