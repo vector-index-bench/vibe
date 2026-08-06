@@ -1,0 +1,157 @@
+float:
+  euclidean:
+  - base_args: ['@metric']
+    constructor: Jasper
+    disabled: false
+    gpu: true
+    singularity_image: jasper
+    module: vibe.algorithms.jasper
+    name: jasper-base
+    run_groups:
+      jasper-8:
+        args:
+          n_neighbors: [8]
+          alpha: [1.2]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-16:
+        args:
+          n_neighbors: [16]
+          alpha: [1.2]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-32:
+        args:
+          n_neighbors: [32]
+          alpha: [1.2]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-64:
+        args:
+          n_neighbors: [64]
+          alpha: [1.2]
+        query_args:
+          beam_width: [32, 64, 128, 256, 512, 1024, 1536]
+  - base_args: ['@metric', 'cph']
+    constructor: JasperDirectional
+    disabled: false
+    gpu: true
+    singularity_image: jasper
+    module: vibe.algorithms.jasper
+    name: jasper-directional-cph
+    run_groups:
+      jasper-cph-32:
+        args:
+          n_neighbors: [32]
+          alpha: [1.2]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-cph-64:
+        args:
+          n_neighbors: [64]
+          alpha: [1.2]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [32, 64, 128, 256, 512, 1024, 1536]
+  - base_args: ['@metric', 'pq']
+    constructor: JasperDirectional
+    disabled: false
+    gpu: true
+    singularity_image: jasper
+    module: vibe.algorithms.jasper
+    name: jasper-directional-pq
+    run_groups:
+      jasper-pq-32:
+        args:
+          n_neighbors: [32]
+          alpha: [1.2]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-pq-64:
+        args:
+          n_neighbors: [64]
+          alpha: [1.2]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [32, 64, 128, 256, 512, 1024, 1536]
+  # ip/cosine/normalized all map to distance="ip" in module.py; Vamana-style robust
+  # pruning wants alpha near/at 1.0 for MIPS, unlike the >1.0 "long hop" alpha used for l2.
+  any:
+  - base_args: ['@metric']
+    constructor: Jasper
+    disabled: false
+    gpu: true
+    singularity_image: jasper
+    module: vibe.algorithms.jasper
+    name: jasper-base
+    run_groups:
+      jasper-8:
+        args:
+          n_neighbors: [8]
+          alpha: [0.95, 1.0]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-16:
+        args:
+          n_neighbors: [16]
+          alpha: [0.95, 1.0]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-32:
+        args:
+          n_neighbors: [32]
+          alpha: [0.95, 1.0]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-64:
+        args:
+          n_neighbors: [64]
+          alpha: [0.95, 1.0]
+        query_args:
+          beam_width: [32, 64, 128, 256, 512, 1024, 1536]
+  - base_args: ['@metric', 'cph']
+    constructor: JasperDirectional
+    disabled: false
+    gpu: true
+    singularity_image: jasper
+    module: vibe.algorithms.jasper
+    name: jasper-directional-cph
+    run_groups:
+      jasper-cph-32:
+        args:
+          n_neighbors: [32]
+          alpha: [0.95, 1.0]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-cph-64:
+        args:
+          n_neighbors: [64]
+          alpha: [0.95, 1.0]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [32, 64, 128, 256, 512, 1024, 1536]
+  - base_args: ['@metric', 'pq']
+    constructor: JasperDirectional
+    disabled: false
+    gpu: true
+    singularity_image: jasper
+    module: vibe.algorithms.jasper
+    name: jasper-directional-pq
+    run_groups:
+      jasper-pq-32:
+        args:
+          n_neighbors: [32]
+          alpha: [0.95, 1.0]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [16, 32, 64, 128, 256, 512, 1024, 1536]
+      jasper-pq-64:
+        args:
+          n_neighbors: [64]
+          alpha: [0.95, 1.0]
+          k_ranks: [4, 16]
+        query_args:
+          beam_width: [32, 64, 128, 256, 512, 1024, 1536]
