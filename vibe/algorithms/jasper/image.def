@@ -12,7 +12,10 @@ From: base.sif
     apt-get install -y libssl-dev
 
     CUDA_VERSION="12.8.1"
-    CUDA_INSTALLER="cuda_12.8.1_570.124.06_linux.run"
+    case "$(uname -m)" in
+        aarch64|arm64) CUDA_INSTALLER="cuda_12.8.1_570.124.06_linux_sbsa.run" ;;
+        *) CUDA_INSTALLER="cuda_12.8.1_570.124.06_linux.run" ;;
+    esac
     wget https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_INSTALLER}
 
     chmod +x ${CUDA_INSTALLER}
