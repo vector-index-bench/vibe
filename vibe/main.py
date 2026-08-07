@@ -88,8 +88,8 @@ def limit_algorithms(definitions: List[Definition], limit: int) -> List[Definiti
     return definitions if limit < 0 else definitions[:limit]
 
 
-def filter_by_available_singularity_images(definitions):
-    available_images = set([os.path.basename(x).replace(".sif", "") for x in glob.glob("images/*.sif")])
+def filter_by_available_singularity_images(definitions, image_dir="./images"):
+    available_images = set([os.path.basename(x).replace(".sif", "") for x in glob.glob(os.path.join(image_dir, "*.sif"))])
     missing_singularity_images = set(d.singularity_image for d in definitions).difference(available_images)
 
     if missing_singularity_images:
@@ -180,6 +180,12 @@ def parse_arguments() -> argparse.Namespace:
         "--local",
         action="store_true",
         help="If set, then will run everything locally (inside the same process) rather than using Singularity",
+    )
+    parser.add_argument(
+        "--image-dir",
+        metavar="FOLDER",
+        default="./images",
+        help="directory containing the Singularity images",
     )
     parser.add_argument("--gpu", action="store_true", help="If set, run the benchmark in GPU mode")
     parser.add_argument(
@@ -321,7 +327,7 @@ def main():
         definitions = [d for d in definitions if d.algorithm == args.algorithm]
 
     if not args.local:
-        definitions = filter_by_available_singularity_images(definitions)
+        definitions = filter_by_available_singularity_images(definitions, args.image_dir)
     else:
         definitions = list(filter(check_module_import_and_constructor, definitions))
 

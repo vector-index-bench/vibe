@@ -1,11 +1,12 @@
 #!/bin/bash
 
 show_help() {
-    echo "Usage: $0 [--algorithm <name>] [--build-dir <dir>] [--skip-gpu] [--force] [--help]"
+    echo "Usage: $0 [--algorithm <name>] [--build-dir <dir>] [--image-dir <dir>] [--skip-gpu] [--force] [--help]"
     echo
     echo "Options:"
     echo "  --algorithm <name>  Specify the algorithm to build. If not specified, build all algorithms."
     echo "  --build-dir <dir>   Specify a temporary directory where the images are built."
+    echo "  --image-dir <dir>   Specify the directory where completed Singularity images are stored."
     echo "  --skip-gpu          Skip GPU algorithms when building all algorithms."
     echo "  --force             Force rebuilding images that already exist."
     echo "  --help              Display this help message."
@@ -13,6 +14,7 @@ show_help() {
 
 algorithm_name=""
 build_dir="$(pwd)"
+image_dir="./images"
 force_build="false"
 skip_gpu="false"
 
@@ -33,6 +35,15 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
         else
             echo "Error: --build-dir requires a value."
+            exit 1
+        fi
+        ;;
+    --image-dir)
+        if [[ -n "$2" && "$2" != --* ]]; then
+            image_dir="$2"
+            shift 2
+        else
+            echo "Error: --image-dir requires a value."
             exit 1
         fi
         ;;
@@ -57,47 +68,52 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 build_singularity_image() {
-    local name="$(basename $1)"
+    local name
+    name="$(basename "$1")"
 
-    if [ ! -e "./images/${name}.sif" ] || [ "$force_build" = "true" ]; then
-        cp "$1/image.def" "$build_dir/images/${name}.def"
-        pushd "$build_dir/images" >/dev/null
+    if [ ! -e "$image_dir/${name}.sif" ] || [ "$force_build" = "true" ]; then
+        cp "$1/image.def" "$build_images_dir/${name}.def"
+        pushd "$build_images_dir" >/dev/null
         singularity build -F "${name}.sif" "${name}.def"
         popd >/dev/null
-        if [ "$build_dir" != "$(pwd)" ]; then
-            mv "$build_dir/images/${name}.sif" "./images/${name}.sif"
+        if [ "$build_images_dir" != "$image_dir" ]; then
+            mv "$build_images_dir/${name}.sif" "$image_dir/${name}.sif"
         fi
     else
-        echo "./images/${name}.sif already exists; skipping"
+        echo "$image_dir/${name}.sif already exists; skipping"
     fi
 }
 
-export build_dir
+export build_dir image_dir
 export -f build_singularity_image
 
 set -e
+
+mkdir -p "$image_dir"
+mkdir -p "$build_dir/images"
+
+image_dir="$(cd "$image_dir" && pwd -P)"
+build_images_dir="$(cd "$build_dir/images" && pwd -P)"
+
 clean_up() {
     ARG=$?
-    rm -f "$build_dir/images/environment.yml"
-    find "$build_dir/images" -maxdepth 1 -name "*.def" -type f -exec rm {} +
+    rm -f "$build_images_dir/environment.yml"
+    find "$build_images_dir" -maxdepth 1 -name "*.def" -type f -exec rm {} +
     exit $ARG
 }
 trap clean_up EXIT
-
-mkdir -p "./images"
-mkdir -p "$build_dir/images"
 
 if [ "$build_dir" != "$(pwd)" ]; then
     export SINGULARITY_TMPDIR="$build_dir"
     export SINGULARITY_CACHEDIR="$build_dir"
 fi
 
-if [ ! -e "./images/base.sif" ]; then
-    cp environment.yml "$build_dir/images/environment.yml"
+if [ ! -e "$image_dir/base.sif" ]; then
+    cp environment.yml "$build_images_dir/environment.yml"
     build_singularity_image "vibe/algorithms/base"
 fi
-if [ "$build_dir" != "$(pwd)" ]; then
-    cp "./images/base.sif" "$build_dir/images/base.sif"
+if [ "$build_images_dir" != "$image_dir" ]; then
+    cp "$image_dir/base.sif" "$build_images_dir/base.sif"
 fi
 
 if [ -n "$algorithm_name" ]; then

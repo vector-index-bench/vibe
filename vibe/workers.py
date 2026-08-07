@@ -194,6 +194,7 @@ def run_singularity(
     cpu: int,
     local: bool,
     terminate_evt,
+    image_dir: str = "./images",
 ) -> None:
     """Runs `run_from_cmdline` within a Singularity container with specified parameters and logs the output.
 
@@ -245,7 +246,7 @@ def run_singularity(
         cmd += ["singularity", "exec"]
         if definition.gpu:
             cmd += ["--nv"]
-        cmd += [f"images/{definition.singularity_image}.sif"]
+        cmd += [str(Path(image_dir) / f"{definition.singularity_image}.sif")]
 
     cmd += [
         "python3",
@@ -436,6 +437,7 @@ def run_worker(cpu, args, queue, terminate_evt) -> None:
                     cpu,
                     args.local,
                     terminate_evt=terminate_evt,
+                    image_dir=args.image_dir,
                 )
             except Exception as e:
                 logger.warning(f"Worker failed on CPU {cpu}: {e}")
