@@ -84,7 +84,11 @@ Building all library images can be done using
 ./install.sh
 ```
 
-The script can be used to either build images for all available libraries (`./install.sh`) or an image for a single library (e.g. `./install.sh --algorithm faiss`).
+Use `./install.sh --skip-gpu` if you don't need to benchmark GPU methods. To build an image for a single library:
+
+```sh
+./install.sh --algorithm hnswlib
+```
 
 > [!TIP]
 > `install.sh` takes an argument `--build-dir` that specifies the temporary build directory. For example, to speed up the build in a cluster environment, you can set the build directory to a location on an SSD while the project files are on a slower storage medium.

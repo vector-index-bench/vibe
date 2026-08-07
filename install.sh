@@ -1,11 +1,12 @@
 #!/bin/bash
 
 show_help() {
-    echo "Usage: $0 [--algorithm <name>] [--build-dir <dir>] [--force] [--help]"
+    echo "Usage: $0 [--algorithm <name>] [--build-dir <dir>] [--skip-gpu] [--force] [--help]"
     echo
     echo "Options:"
     echo "  --algorithm <name>  Specify the algorithm to build. If not specified, build all algorithms."
     echo "  --build-dir <dir>   Specify a temporary directory where the images are built."
+    echo "  --skip-gpu          Skip GPU algorithms when building all algorithms."
     echo "  --force             Force rebuilding images that already exist."
     echo "  --help              Display this help message."
 }
@@ -13,6 +14,7 @@ show_help() {
 algorithm_name=""
 build_dir="$(pwd)"
 force_build="false"
+skip_gpu="false"
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -36,6 +38,10 @@ while [[ "$#" -gt 0 ]]; do
         ;;
     --force)
         force_build="true"
+        shift
+        ;;
+    --skip-gpu)
+        skip_gpu="true"
         shift
         ;;
     --help)
@@ -104,6 +110,10 @@ else
     directories=$(find vibe/algorithms -type f -name "image.def" -exec dirname {} \;)
 
     for dir in $directories; do
+        if [ "$skip_gpu" = "true" ] && grep -qE '^[[:space:]]*gpu:[[:space:]]*true[[:space:]]*$' "$dir/config.yml"; then
+            echo "Skipping GPU algorithm $(basename "$dir")"
+            continue
+        fi
         build_singularity_image "$dir"
     done
 fi
