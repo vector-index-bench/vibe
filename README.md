@@ -249,7 +249,7 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
 | [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
 | [LoRANN](https://github.com/ejaasaari/lorann) | 0.4.5 |
-| [MLANN](https://github.com/ejaasaari/mlann) | git+ba141b4 |
+| [MLANN](https://github.com/ejaasaari/mlann) | git+de8f9d6 |
 | [MRPT](https://github.com/vioshyvo/mrpt) | 2.0.4 |
 | [NGT-ONNG](https://github.com/yahoojapan/NGT/) | 2.7.4 |
 | [NGT-QG](https://github.com/yahoojapan/NGT/) | 2.7.4 |

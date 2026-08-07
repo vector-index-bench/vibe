@@ -6,6 +6,6 @@ From: base.sif
 
   cd mlann
   git config --global --add safe.directory /mlann
-  git reset --hard ba141b456355a411ea00125ee84d574b7073ab26
+  git reset --hard de8f9d6ea977312f5a8943a9ccdbd11870ac590c
 
   pip install .
