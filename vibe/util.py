@@ -1,4 +1,5 @@
 import os
+import tempfile
 import time
 from urllib.request import build_opener, install_opener, urlopen
 
@@ -17,39 +18,61 @@ def download(src: str, dst: str, max_size: str = None) -> None:
         src (str): The URL of the file to download.
         dst (str): The local path where the file should be saved.
     """
-    if os.path.exists(dst):
+    if os.path.exists(dst) and os.path.getsize(dst) > 0:
         return
 
     print("downloading %s -> %s..." % (src, dst))
+    size_limit = int(max_size) if max_size is not None else None
     if max_size is not None:
-        print("   stopping at %.2f MiB " % (int(max_size) / 2**20))
+        print("   stopping at %.2f MiB " % (size_limit / 2**20))
 
     t0 = time.time()
-    outf = open(dst, "wb")
-    inf = urlopen(src)
-    info = dict(inf.info())
-    content_size = int(info["Content-Length"])
     bs = 1 << 20
     totsz = 0
+    temp_path = None
 
-    while True:
-        block = inf.read(bs)
-        elapsed = time.time() - t0
-        print(
-            "  [%.2f s] downloaded %.2f MiB / %.2f MiB at %.2f MiB/s   "
-            % (elapsed, totsz / 2**20, content_size / 2**20, totsz / 2**20 / elapsed),
-            flush=True,
-            end="\r",
-        )
-        if not block:
-            break
-        if max_size is not None and totsz + len(block) >= max_size:
-            block = block[: max_size - totsz]
-            outf.write(block)
-            totsz += len(block)
-            break
-        outf.write(block)
-        totsz += len(block)
+    try:
+        with urlopen(src) as inf:
+            content_length = inf.info().get("Content-Length")
+            content_size = int(content_length) if content_length is not None else None
+
+            dst_dir = os.path.dirname(os.path.abspath(dst))
+            fd, temp_path = tempfile.mkstemp(prefix=f".{os.path.basename(dst)}.", suffix=".download", dir=dst_dir)
+
+            with os.fdopen(fd, "wb") as outf:
+                while True:
+                    block = inf.read(bs)
+                    elapsed = max(time.time() - t0, 1e-9)
+                    if content_size is None:
+                        progress = "  [%.2f s] downloaded %.2f MiB at %.2f MiB/s   " % (
+                            elapsed,
+                            totsz / 2**20,
+                            totsz / 2**20 / elapsed,
+                        )
+                    else:
+                        progress = "  [%.2f s] downloaded %.2f MiB / %.2f MiB at %.2f MiB/s   " % (
+                            elapsed,
+                            totsz / 2**20,
+                            content_size / 2**20,
+                            totsz / 2**20 / elapsed,
+                        )
+                    print(progress, flush=True, end="\r")
+
+                    if not block:
+                        break
+                    if size_limit is not None and totsz + len(block) >= size_limit:
+                        block = block[: size_limit - totsz]
+                        outf.write(block)
+                        totsz += len(block)
+                        break
+                    outf.write(block)
+                    totsz += len(block)
+
+        os.replace(temp_path, dst)
+        temp_path = None
+    finally:
+        if temp_path is not None and os.path.exists(temp_path):
+            os.unlink(temp_path)
 
     print("Download finished in %.2f s, total size %d bytes" % (time.time() - t0, totsz))
 
