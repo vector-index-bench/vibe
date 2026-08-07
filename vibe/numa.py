@@ -62,6 +62,12 @@ libnuma.numa_preferred.restype = c_int
 libnuma.numa_node_to_cpus.argtypes = [c_int, POINTER(bitmask_t)]
 libnuma.numa_node_to_cpus.restype = c_int
 
+libnuma.numa_allocate_cpumask.argtypes = []
+libnuma.numa_allocate_cpumask.restype = POINTER(bitmask_t)
+
+libnuma.numa_bitmask_isbitset.argtypes = [POINTER(bitmask_t), c_uint]
+libnuma.numa_bitmask_isbitset.restype = c_int
+
 libnuma.numa_set_interleave_mask.argtypes = [POINTER(bitmask_t)]
 libnuma.numa_set_interleave_mask.restype = c_void_p
 
@@ -163,24 +169,24 @@ def node_to_cpus(node):
     @rtype: C{set}
     """
 
-    result = set()
-
     if node < 0 or node > get_max_node():
         raise ValueError(node)
 
-    mask = bitmask_t()
-    mask.maskp = (c_ulong * (NUMA_NUM_NODES // (sizeof(c_ulong) * 8)))()
-    mask.size = NUMA_NUM_NODES
+    mask = libnuma.numa_allocate_cpumask()
+    if not mask:
+        raise MemoryError("Could not allocate NUMA CPU mask")
 
-    if libnuma.numa_node_to_cpus(node, byref(mask)) < 0:
-        raise RuntimeError(node)
+    try:
+        if libnuma.numa_node_to_cpus(node, mask) < 0:
+            raise RuntimeError(node)
 
-    for i in range(0, NUMA_NUM_NODES // (sizeof(c_ulong) * 8)):
-        for j in range(0, sizeof(c_ulong) * 8):
-            if mask.maskp[i] & (1 << j) == (1 << j):
-                result.add(i * sizeof(c_ulong) * 8 + j)
-
-    return result
+        return {
+            cpu
+            for cpu in range(mask.contents.size)
+            if libnuma.numa_bitmask_isbitset(mask, cpu)
+        }
+    finally:
+        libnuma.numa_bitmask_free(mask)
 
 
 def __nodemask_isset(mask, node):
