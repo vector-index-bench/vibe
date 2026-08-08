@@ -56,6 +56,18 @@ def export_results(path, data_dir):
                     if "best_qps" in hfp[query_params].attrs
                     else 1 / hfp[query_params].attrs["best_search_time"]
                 )
+                # relative run-to-run spread of QPS across the repeated runs
+                # ((max - min) / max; 0.0 for a single run). Old result files
+                # without per-run values export null.
+                if "all_qps" in hfp[query_params].attrs:
+                    all_qps = np.asarray(hfp[query_params].attrs["all_qps"], dtype=float)
+                    qps_rel_spread = (
+                        float((all_qps.max() - all_qps.min()) / all_qps.max())
+                        if all_qps.size > 0 and all_qps.max() > 0
+                        else 0.0
+                    )
+                else:
+                    qps_rel_spread = None
                 build_time = hfp[query_params].attrs["build_time"]
                 index_size = hfp[query_params].attrs["index_size"]
                 summary = dict(
@@ -64,6 +76,7 @@ def export_results(path, data_dir):
                     algorithm=algo,
                     params=params,
                     qps=qps,
+                    qps_rel_spread=qps_rel_spread,
                     recall=recalls.mean(),
                     build_time=build_time,
                     index_size=index_size,

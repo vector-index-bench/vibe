@@ -32,6 +32,8 @@ def run_individual_query(
 
     best_search_time = float("inf")
     best_qps = 0.0
+    all_search_times = []
+    all_qps = []
     for i in range(run_count):
         print("Run %d/%d..." % (i + 1, run_count))
 
@@ -121,12 +123,19 @@ def run_individual_query(
         else:
             qps = len(X_test) / total
         best_qps = max(best_qps, qps)
+        all_search_times.append(search_time)
+        all_qps.append(qps)
 
     verbose = hasattr(algo, "query_verbose")
     attrs = {
         "gpu_mode": gpu,
         "best_search_time": best_search_time,
         "best_qps": best_qps,
+        # per-run values: the board reports the best of run_count attempts, so
+        # the run-to-run spread is what separates a real rank gap from timing
+        # noise on adjacent Pareto points
+        "all_search_times": all_search_times,
+        "all_qps": all_qps,
         "candidates": avg_candidates,
         "expect_extra": verbose,
         "name": str(algo),
