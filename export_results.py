@@ -183,13 +183,18 @@ def export_query_stats(data_dir, output_file):
             try:
                 with h5py.File(path) as hfp:
                     name = path.name.replace(".hdf5", "")
+                    n = hfp["train"].shape[0]
                     distances = hfp["distances"][:]
                     avg_distances = hfp["avg_distances"][:]
                     metrics = dict(dataset=name, query_index=np.arange(distances.shape[0]))
                     for k in [1, 10, 100]:
                         if k > 1:
                             metrics[f"lid{k}"] = np.array([compute_lid(ds, k) for ds in distances])
-                        metrics[f"rc{k}"] = avg_distances / distances[:, k - 1]
+                        # relative contrast
+                        rc = avg_distances / distances[:, k - 1]
+                        metrics[f"rc{k}"] = rc
+                        # local relative contrast dimension
+                        metrics[f"rcdim{k}"] = np.log(n / (2*k)) / np.log(rc)
                     stats.append(pl.DataFrame(metrics))
             except Exception as e:
                 print(f"Skipping invalid HDF5 file {path}: {e}")
