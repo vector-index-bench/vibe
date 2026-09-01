@@ -26,7 +26,7 @@ The current VIBE results can be viewed on our website:
 
 https://vector-index-bench.github.io
 
-The website also features several other tools and visualizations to explore the results.
+The website also features several other tools and visualizations to explore the results, and the underlying [result files](https://github.com/vector-index-bench/vector-index-bench.github.io/tree/main/results) are also available in the website repository.
 
 The results are run on Intel Xeon Gold 6230 (Cascade Lake) CPUs with support for AVX-512 instructions. All algorithms are benchmarked using a single core. The GPU algorithms are run using an NVIDIA V100 (32 GB). The next results update will use AMD Turin 9965 CPUs, while GPU algorithms will be run using NVIDIA GH200 (96 GB).
 
