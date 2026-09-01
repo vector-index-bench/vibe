@@ -635,7 +635,7 @@ def split_difficulties_plot(
     plt.close()
 
 
-def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
+def plot_difficulty_ridgeline(out_dir, query_stats, x="rcdim100", log=False):
     # adapted from https://matplotlib.org/matplotblog/posts/create-ridgeplots-in-matplotlib/
     from sklearn.neighbors import KernelDensity
     import numpy as np
@@ -643,7 +643,7 @@ def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
     query_stats = (
         query_stats.filter(pl.col("dataset").is_in(ID_DATASETS + ID_DATASETS_ADDITIONAL + OOD_DATASETS))
         .filter(~pl.col("dataset").str.contains("-ip"))
-        .filter(pl.col(x) >= 1)
+        .filter(pl.col(x).is_finite() & pl.col(x).is_not_nan() & (pl.col(x) > 0))
         .with_columns(mean_x=pl.col(x).mean().over("dataset"))
         .with_columns(
             pl.when(pl.col("dataset").is_in(ID_DATASETS + ID_DATASETS_ADDITIONAL))
@@ -664,27 +664,33 @@ def plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True):
     plt.figure(figsize=(8, 3))
     ax = plt.gca()
 
-    maxx = 3.5
     minx = 0
+    maxx = query_stats[x].max()
+    bandwidth = max((maxx - minx) / 70, 1e-6)
     for i, dataset in enumerate(datasets):
         pdata = query_stats.filter(pl.col("dataset") == dataset)
         xvals = pdata[x].to_numpy()
         x_d = np.linspace(minx, maxx, 1000)
 
-        kde = KernelDensity(bandwidth=0.05, kernel="gaussian")
+        kde = KernelDensity(bandwidth=bandwidth, kernel="gaussian")
         kde.fit(xvals[:, None])
         logprob = kde.score_samples(x_d[:, None])
+        density = np.exp(logprob)
+        density /= density.max()
 
         offset = (len(datasets) - i - 1) * 1.5
         color = "tab:blue" if dataset in ID_DATASETS + ID_DATASETS_ADDITIONAL else "tab:orange"
-        ax.plot(x_d, offset + np.exp(logprob), color="#f0f0f0", lw=1, zorder=2 * i + 1)
-        ax.fill_between(x_d, offset + np.exp(logprob), offset, alpha=1, zorder=2 * i, color=color)
+        ax.plot(x_d, offset + density, color="#f0f0f0", lw=1, zorder=2 * i + 1)
+        ax.fill_between(x_d, offset + density, offset, alpha=1, zorder=2 * i, color=color)
         label = "-".join(dataset.split("-")[:-2])
-        ax.annotate(label, (3.5, offset), ha="right", va="bottom", color=color)
+        ax.annotate(label, (maxx, offset), ha="right", va="bottom", color=color)
 
-    x_label = (
-        rf"\mathrm{{RC}}_{{{x[2:]}}}" if x.startswith("rc") and x[2:].isdigit() else rf"\mathrm{{{x}}}"
-    )
+    if x.startswith("rcdim") and x[5:].isdigit():
+        x_label = rf"\mathrm{{RCdim}}_{{{x[5:]}}}"
+    elif x.startswith("rc") and x[2:].isdigit():
+        x_label = rf"\mathrm{{RC}}_{{{x[2:]}}}"
+    else:
+        x_label = rf"\mathrm{{{x}}}"
     if log:
         ax.set_xlabel(rf"$\log({x_label})$")
     else:
@@ -878,7 +884,7 @@ def paper(out_dir, all_algorithms, summary, detail, query_stats, pca_mahalanobis
         "symphonyqg",
     ]
 
-    plot_difficulty_ridgeline(out_dir, query_stats)
+    plot_difficulty_ridgeline(out_dir, query_stats, x="rc100", log=True)
 
     radar_at_recall_plot(
         out_dir,
