@@ -258,6 +258,8 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [ANNOY](https://github.com/spotify/annoy) | 1.17.3 |
 | [FALCONN++](https://github.com/NinhPham/FalconnPP) | git+5fd3f17 |
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
+| [DEG](https://github.com/Visual-Computing/DynamicExplorationGraph) | 0.2.5 |
+| [DEG-QG](https://github.com/Visual-Computing/DynamicExplorationGraph) | 0.2.5 |
 | [CAGRA](https://github.com/rapidsai/cuvs) | 26.04.00 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
 | [Glass](https://github.com/zilliztech/pyglass) | git+d2296ec |
