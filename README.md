@@ -49,6 +49,10 @@ VIBE is available under the MIT License (see [LICENSE](LICENSE)). The [pyyaml](h
 
 ### Requirements
 
+#### Hardware requirements
+Some algorithms may require that the CPU supports AVX-512 instructions and some algorithms may require an Intel CPU due to a dependency on Intel MKL. The GPU algorithms assume that an NVIDIA GPU is available.
+
+#### Software requirements
 - Linux
 - [Apptainer](https://apptainer.org/docs/admin/main/installation.html#install-from-pre-built-packages) (or [Singularity](https://docs.sylabs.io/guides/4.3/user-guide/quick_start.html))
 - Python 3.6 or newer
@@ -60,7 +64,20 @@ sudo apt update
 sudo apt install -y apptainer
 ```
 
-Some algorithms may require that the CPU supports AVX-512 instructions and some algorithms may require an Intel CPU due to a dependency on Intel MKL. The GPU algorithms assume that an NVIDIA GPU is available.
+You might also need to install packages for fakeroot and squashfs support:
+
+```sh
+sudo apt install uidmap squashfuse fuse2fs gocryptfs
+```
+
+> [!TIP]
+> On Ubuntu (24.04+) where AppArmor restricts unprivileged user namespaces, enable them with:
+>
+> ```sh
+> sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+> ```
+>
+> See the [Apptainer user namespace requirements](https://apptainer.org/docs/admin/main/user_namespace.html#user-namespace-requirements) for details.
 
 > [!IMPORTANT]
 > For accurate benchmarking, it is recommended to disable SMT/hyperthreading:
