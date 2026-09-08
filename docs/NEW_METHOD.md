@@ -1,5 +1,15 @@
 # Contributing a new method
 
+## Scope
+
+VIBE benchmarks **algorithms**, with one representative implementation per algorithm by default. Before adding a method, check the [existing algorithms](../README.md#algorithms):
+
+- New algorithms are welcome.
+- Additional implementations of an existing algorithm should introduce a significant algorithmic addition, such as quantization.
+- Vector databases and database service integrations are out of scope.
+
+## Integration
+
 Under `vibe/algorithms/<algorithm>/`, add:
 - `image.def` container definition
 - `module.py` adapter
@@ -7,7 +17,7 @@ Under `vibe/algorithms/<algorithm>/`, add:
 
 See e.g. [hnswlib](../vibe/algorithms/hnswlib/) for a small working example.
 
-## 1. Build the image
+### 1. Build the image
 
 Create `image.def`. Install the method and its dependencies here, pinning the method to a version or a Git commit:
 
@@ -28,7 +38,7 @@ Build it with the directory name:
 
 Use `--force` after changing `image.def`.
 
-## 2. Implement the adapter
+### 2. Implement the adapter
 
 Subclass `BaseANN` in `module.py`:
 
@@ -77,7 +87,7 @@ GPU methods should implement `batch_query(X, n)` and `get_batch_results()`.
 
 OOD methods that leverage query samples should implement `fit_ood(X_train, X_learn, X_learn_neighbors)`, where `X_learn` contains the query samples and `X_learn_neighbors` contains the 100 nearest neighbors for each query sample.
 
-## 3. Configure the hyperparameters
+### 3. Configure the hyperparameters
 
 Create `config.yml`:
 
@@ -109,6 +119,6 @@ The outer key selects the supported datatype: `float` for regular float vectors,
 
 Set `gpu: true` for GPU methods. They run only with `run.py --gpu` and must implement the batch-query methods described above. Set `ood: true` when the method uses the learning queries and neighbors supplied by out-of-distribution datasets; VIBE then calls `fit_ood` when that data is available. Both keys default to `false` and may be omitted.
 
-## 4. Update the README and open a pull request
+### 4. Update the README and open a pull request
 
 Add the method and pinned implementation version to the [README](../README.md), then open a pull request.
