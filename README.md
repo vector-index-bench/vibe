@@ -21,12 +21,15 @@
 - 🖥️ Support for HPC environments with Slurm and NUMA
 - 🚀 Support for GPU algorithms
 
+### Scope
+VIBE compares approximate nearest neighbor search algorithms, typically with one representative high-performing implementation per algorithm. Additional implementations are also considered when they introduce a significant addition, such as quantization. This algorithm-level comparison also means that we do not aim to benchmark vector databases or cloud services.
+
 ### Results
 The current VIBE results can be viewed on our website:
 
 https://vector-index-bench.github.io
 
-The website also features several other tools and visualizations to explore the results, and the underlying [result files](https://github.com/vector-index-bench/vector-index-bench.github.io/tree/main/results) are also available in the website repository.
+The website also features several other tools and visualizations to explore the results, and the [result files](https://github.com/vector-index-bench/vector-index-bench.github.io/tree/main/results) are also available in the website repository.
 
 The results are run on Intel Xeon Gold 6230 (Cascade Lake) CPUs with support for AVX-512 instructions. All algorithms are benchmarked using a single core. The GPU algorithms are run using an NVIDIA V100 (32 GB). The next results update will use AMD Turin 9965 CPUs, while GPU algorithms will be run using NVIDIA GH200 (96 GB).
 
@@ -190,7 +193,7 @@ export VIBE_CACHE=$LOCAL_SCRATCH
 
 ### Adding a new method to the benchmark
 
-VIBE is an on-going effort and we actively welcome new additions to the benchmarks.
+VIBE is an on-going effort and we welcome new additions that fit the benchmark's [scope](#scope).
 
 See the [new method guide](docs/NEW_METHOD.md). In short, add your algorithm in the folder `vibe/algorithms/{METHOD}/` by providing:
 
@@ -256,15 +259,15 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | Method | Version |
 |--------|---------|
 | [ANNOY](https://github.com/spotify/annoy) | 1.17.3 |
+| [CAGRA](https://github.com/rapidsai/cuvs) | 26.04.00 |
+| [DEG-QG](https://github.com/Visual-Computing/DynamicExplorationGraph) | 0.2.5 |
+| [DEG](https://github.com/Visual-Computing/DynamicExplorationGraph) | 0.2.5 |
 | [FALCONN++](https://github.com/NinhPham/FalconnPP) | git+5fd3f17 |
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
-| [DEG](https://github.com/Visual-Computing/DynamicExplorationGraph) | 0.2.5 |
-| [DEG-QG](https://github.com/Visual-Computing/DynamicExplorationGraph) | 0.2.5 |
-| [CAGRA](https://github.com/rapidsai/cuvs) | 26.04.00 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
 | [Glass](https://github.com/zilliztech/pyglass) | git+d2296ec |
-| [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
 | [HNSW-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | git+5ea4df0 |
+| [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
 | [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
 | [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
 | [IVF-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | git+5ea4df0 |
