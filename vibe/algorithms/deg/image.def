@@ -17,4 +17,4 @@ From: base.sif
       numpy>=1.26.0
 
   # Install deglib
-  pip install --no-cache-dir "deglib>=0.2.5"
+  pip install --no-cache-dir "deglib>=0.2.6"
