@@ -11,11 +11,11 @@ float:
     run_groups:
       base:
         args:
-          k: [16, 24, 30, 40, 48]
+          k: [16, 24, 32, 48]
           opt_target: ['LowLID', 'StreamingData']
           prune_non_rng: [false, true]
         query_args:
-          search_eps: [0.0, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25, 0.3]
+          eps_or_ef: [10, 64, 96, 128, 160, 200, 250, 320, 400, 500, 600, 700, 800, 900, 1000, 0.0, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25, 0.3]
   - name: deg-qg
     module: vibe.algorithms.deg
     constructor: QG
@@ -25,11 +25,11 @@ float:
     ood: false
     base_args: ['@metric']
     run_groups:
-      base:
+      linear_pool:
         args:
-          k: [16, 24, 30, 40, 48]
+          k: [16, 24, 32, 48]
           opt_target: ['LowLID', 'StreamingData']
           prune_non_rng: [false, true]
         query_args:
-          rerank_size_factor: [1.0, 1.2, 1.5, 2.0]
-          search_eps: [0.0, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25, 0.3]
+          rerank_size_factor: [1.0, 1.15, 1.35, 1.55, 1.75, 2]
+          eps_or_ef: [10, 64, 96, 128, 160, 200, 250, 320, 400, 500, 600, 700, 800, 900, 1000, 0.0, 0.005, 0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.15, 0.2, 0.25, 0.3]
