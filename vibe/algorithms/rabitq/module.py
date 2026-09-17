@@ -68,7 +68,6 @@ class RabitqIVF(_RabitqBase):
         self.total_bits = total_bits
         self.fast_quantization = fast_quantization
         self.nprobe = 1
-        self.high_accuracy = True
 
     def fit(self, X):
         X = self._prepare_data(X)
@@ -82,35 +81,33 @@ class RabitqIVF(_RabitqBase):
         )
         self.index.build(X, centroids, cluster_ids, num_threads=1, fast_quantization=self.fast_quantization)
 
-    def set_query_arguments(self, nprobe, high_accuracy=True):
+    def set_query_arguments(self, nprobe):
         self.nprobe = nprobe
-        self.high_accuracy = high_accuracy
 
     def query(self, v, n):
         ids, _ = self.index.search(
             self._prepare_query(v),
             k=n,
             nprobe=self.nprobe,
-            high_accuracy=self.high_accuracy,
             num_threads=1,
         )
-        return ids[0]
+        # Unfilled slots contain the native uint32 sentinel, not a dataset ID.
+        return ids[0][ids[0] < self.index.max_elements]
 
     def batch_query(self, X, n):
-        self.res, _ = self.index.search(
+        ids, _ = self.index.search(
             self._prepare_queries(X),
             k=n,
             nprobe=self.nprobe,
-            high_accuracy=self.high_accuracy,
             num_threads=1,
         )
+        self.res = [row[row < self.index.max_elements] for row in ids]
 
     def __str__(self):
-        return "RabitqIVF(num_clusters=%d, total_bits=%d, nprobe=%d, high_accuracy=%s)" % (
+        return "RabitqIVF(num_clusters=%d, total_bits=%d, nprobe=%d)" % (
             self.num_clusters,
             self.total_bits,
             self.nprobe,
-            self.high_accuracy,
         )
 
 
@@ -158,30 +155,39 @@ class RabitqHNSW(_RabitqBase):
 
 
 class SymphonyQG(_RabitqBase):
-    def __init__(self, metric, max_degree, efConstruction):
+    def __init__(self, metric, max_degree, efConstruction, quantization_bits=0):
         super().__init__(metric)
         self.max_degree = max_degree
         self.efConstruction = efConstruction
+        self.quantization_bits = quantization_bits
         self.ef = 10
 
     def fit(self, X):
         X = self._prepare_data(X)
-        self.index = SymqgIndex(dim=X.shape[1], max_degree=self.max_degree, metric=self.rabitq_metric)
+        self.index = SymqgIndex(
+            dim=X.shape[1],
+            max_degree=self.max_degree,
+            metric=self.rabitq_metric,
+            quantization_bits=self.quantization_bits,
+        )
         self.index.build(X, ef_construction=self.efConstruction, num_threads=1)
 
     def set_query_arguments(self, ef):
         self.ef = ef
 
     def query(self, v, n):
+        self.ef = max(self.ef, n)
         ids, _ = self.index.search(self._prepare_query(v), k=n, ef=self.ef, num_threads=1)
         return ids[0]
 
     def batch_query(self, X, n):
+        self.ef = max(self.ef, n)
         self.res, _ = self.index.search(self._prepare_queries(X), k=n, ef=self.ef, num_threads=1)
 
     def __str__(self):
-        return "SymphonyQG(max_degree=%d, efConstruction=%d, ef=%d)" % (
+        return "SymphonyQG(max_degree=%d, efConstruction=%d, quantization_bits=%d, ef=%d)" % (
             self.max_degree,
             self.efConstruction,
+            self.quantization_bits,
             self.ef,
         )
