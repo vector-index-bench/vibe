@@ -2,7 +2,7 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  git clone --depth 1 --branch v0.3.6 https://github.com/VectorDB-NTU/RaBitQ-Library.git /RaBitQ-Library
+  git clone --depth 1 --branch v0.3.7 https://github.com/VectorDB-NTU/RaBitQ-Library.git /RaBitQ-Library
 
   cd /RaBitQ-Library || exit 1
   git config --global --add safe.directory /RaBitQ-Library
