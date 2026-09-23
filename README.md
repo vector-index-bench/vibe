@@ -266,11 +266,11 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [FlatNav](https://github.com/BlaiseMuhirwa/flatnav) | 0.1.2 |
 | [GGNN](https://github.com/cgtuebingen/ggnn) | 0.9 |
 | [Glass](https://github.com/zilliztech/pyglass) | git+d2296ec |
-| [HNSW-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | git+5ea4df0 |
+| [HNSW-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | 0.3.7 |
 | [HNSW](https://github.com/nmslib/hnswlib) | 0.8.0 |
 | [IVF (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
 | [IVF-PQ (Faiss)](https://github.com/facebookresearch/faiss) | 1.14.3 |
-| [IVF-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | git+5ea4df0 |
+| [IVF-RaBitQ](https://github.com/VectorDB-NTU/RaBitQ-Library) | 0.3.7 |
 | [Jasper](https://github.com/saltsystemslab/Jasper) | git+23647b9 |
 | [LVQ (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
 | [LeanVec (SVS)](https://github.com/intel/ScalableVectorSearch) | 0.4.0 |
@@ -286,5 +286,5 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.6.0 |
 | [RoarGraph](https://github.com/matchyc/RoarGraph) | git+f2b49b6 |
 | [ScaNN](https://github.com/google-research/google-research/tree/master/scann) | 1.4.2 |
-| [SymphonyQG](https://github.com/gouyt13/SymphonyQG) | git+32a0019 |
+| [SymphonyQG](https://github.com/VectorDB-NTU/RaBitQ-Library) | 0.3.7 |
 | [Vamana (DiskANN)](https://github.com/microsoft/DiskANN) | 0.7.0 |
