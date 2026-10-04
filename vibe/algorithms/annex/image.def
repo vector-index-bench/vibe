@@ -1,0 +1,27 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  # Rust toolchain (pinned for reproducibility)
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --no-modify-path --profile minimal --default-toolchain 1.98.1
+  export PATH="/root/.cargo/bin:${PATH}"
+
+  pip install --no-cache-dir maturin
+
+  # ANNex — pinned to exact commit
+  git init /annex
+  cd /annex
+  git remote add origin https://github.com/rosharma719/ANNex.git
+  git fetch --depth 1 origin be6dc6f6882e9ad7f29c252e6cf3715df3e7c2
+  git checkout --detach FETCH_HEAD
+
+  cd /annex/python/annex-py
+  maturin build --release --features extension-module -o /tmp/annex-wheels
+  pip install --no-cache-dir /tmp/annex-wheels/*.whl
+
+  # Cleanup build artifacts
+  rm -rf /annex /tmp/annex-wheels /root/.cargo/registry
+
+%environment
+  export LC_ALL=C
