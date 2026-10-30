@@ -1,0 +1,17 @@
+Bootstrap: localimage
+From: base.sif
+
+%files
+  vibe/algorithms/hingezero_cpp20/native/HingeZero_VIBE_Cpp20.cpp /opt/hingezero_support/HingeZero_VIBE_Cpp20.cpp
+
+%post
+  set -eu
+  python -m pip install faiss-cpu==1.12.0
+  mkdir -p /opt/hingezero_cpp20
+  g++ -O3 -std=c++20 -fPIC -shared -DNDEBUG -ffp-contract=off /opt/hingezero_support/HingeZero_VIBE_Cpp20.cpp -o /opt/hingezero_cpp20/libhz20.so
+
+%environment
+  export HINGEZERO_CPP20_LIB=/opt/hingezero_cpp20/libhz20.so
+  export OMP_NUM_THREADS=1
+  export OPENBLAS_NUM_THREADS=1
+  export MKL_NUM_THREADS=1

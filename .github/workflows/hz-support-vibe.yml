@@ -1,0 +1,50 @@
+name: HingeZero learned-support VIBE harness
+on:
+  push:
+    branches:
+      - hingezero-cpp-v3-vibe
+    paths:
+      - .github/workflows/hz-support-vibe.yml
+      - vibe/algorithms/hingezero_support/**
+      - vibe/algorithms/hingezero_cpp20/**
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  vibe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+      PYTHONPATH: "."
+      HINGEZERO_CPP20_LIB: /tmp/libhz20.so
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install numpy==2.4.4 h5py==3.16.0 faiss-cpu==1.12.0 numba==0.65.1 psutil==7.2.2 polars==1.37.1 tqdm
+      - run: g++ -O3 -std=c++20 -fPIC -shared -DNDEBUG -ffp-contract=off vibe/algorithms/hingezero_cpp20/native/HingeZero_VIBE_Cpp20.cpp -o /tmp/libhz20.so
+      - run: |
+          mkdir -p data
+          curl -fsSL --retry 2 --connect-timeout 15 --max-time 210 -o data/yi-128-ip.hdf5 https://huggingface.co/datasets/vector-index-bench/vibe/resolve/main/yi-128-ip.hdf5
+      - run: python run.py --local --force --runs 2 --parallelism 1 --dataset yi-128-ip --algorithm hingezero-support-lab --count 100
+      - run: |
+          python export_results.py --parallelism 1 --skip-pca-mahalanobis
+          python - <<'PY'
+          import polars as pl
+          t=pl.read_parquet("results/summary.parquet").filter(pl.col("algorithm")=="hingezero-support-lab")
+          for x in t.to_dicts():
+              print("HZ_SUPPORT_OFFICIAL_FORMAT", x, flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hingezero-support-vibe-results
+          path: |
+            results/summary.parquet
+            results/raw.parquet
+          if-no-files-found: ignore
