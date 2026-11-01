@@ -1,0 +1,47 @@
+float:
+  any:
+  - base_args: ['@metric']
+    constructor: SiliciumQG
+    disabled: false
+    docker_tag: ann-benchmarks-silicium
+    singularity_image: silicium
+    module: vibe.algorithms.silicium
+    name: silicium-qg
+    gpu: false
+    ood: true
+    run_groups:
+      M-8:
+        args:
+          M: [8]
+          efConstruction: [100]
+          preset: [fast_stream]
+        query_args:
+          ef: [8, 12, 16, 24, 32, 48]
+      M-16:
+        args:
+          M: [16]
+          efConstruction: [100]
+          preset: [fast_stream]
+        query_args:
+          ef: [10, 16, 24, 32, 48, 64, 96, 128, 192, 256, 400]
+      M-24:
+        args:
+          M: [24]
+          efConstruction: [160]
+          preset: [balanced]
+        query_args:
+          ef: [12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 400, 600]
+      M-32:
+        args:
+          M: [32]
+          efConstruction: [300]
+          preset: [high_fidelity]
+        query_args:
+          ef: [16, 24, 32, 48, 64, 96, 128, 192, 256, 400, 600, 800]
+      M-64:
+        args:
+          M: [64]
+          efConstruction: [500]
+          preset: [ultra_fidelity]
+        query_args:
+          ef: [20, 40, 80, 120, 200, 400, 600, 800, 1000]

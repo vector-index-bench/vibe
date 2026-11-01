@@ -1,0 +1,15 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+  mkdir -p /usr/local/lib
+  curl -fsSL -L "https://github.com/silicium369-spec/silicium-hnsw/releases/download/ann-v1.0.0/libsilicium_ann_x86_64.so" -o /usr/local/lib/libsilicium_ann_x86_64.so
+  echo "717b6ad5f542fdc78e5e6ac947ec0268b6652bba7739e732b2de44ca624791fc  /usr/local/lib/libsilicium_ann_x86_64.so" | sha256sum -c -
+  chmod 755 /usr/local/lib/libsilicium_ann_x86_64.so
+  ldconfig
+  python3 -c 'import ctypes; ctypes.CDLL("/usr/local/lib/libsilicium_ann_x86_64.so"); print("[silicium] VIBE Apptainer environment verified")'
+
+%environment
+  export SILICIUM_ANN_LIB="/usr/local/lib/libsilicium_ann_x86_64.so"
+  export SILICIUM_LIB_PATH="/usr/local/lib/libsilicium_ann_x86_64.so"
