@@ -1,0 +1,81 @@
+# Grid dated 2026-10-23 (rationale: docs/benchmarks/VIBE.md in github.com/writerslogic/warm,
+# "Pre-registered OOD grid"). Arguments are positional in YAML order:
+# WARM(metric, degree, build_ef, code_bits, query_aware) and set_query_arguments(ef, rerank).
+# `ood: true` makes VIBE call fit_ood with the dataset's official learn split where the HDF5 file
+# has one (the build samples 32768 learn rows, numpy seed 24301; see module.py); sets without a
+# learn split call fit and build the plain graph from the same grid.
+# VIBE limits: 4 build combinations and 45 query combinations per metric, each below
+# the 20 / 60 guidance.
+float:
+  cosine:
+  - name: warm
+    module: vibe.algorithms.warm
+    constructor: WARM
+    singularity_image: warm
+    disabled: false
+    ood: true
+    base_args: ['@metric']
+    run_groups:
+      base:
+        args:
+          degree: [32, 48, 64, 96]
+          build_ef: [500]
+          code_bits: [8]
+          query_aware: [true]
+        query_args:
+          ef: [40, 50, 64, 80, 100, 128, 160, 200, 256, 320, 400, 512, 640, 800, 1000]
+          rerank: [100, 200, 400]
+  normalized:
+  - name: warm
+    module: vibe.algorithms.warm
+    constructor: WARM
+    singularity_image: warm
+    disabled: false
+    ood: true
+    base_args: ['@metric']
+    run_groups:
+      base:
+        args:
+          degree: [32, 48, 64, 96]
+          build_ef: [500]
+          code_bits: [8]
+          query_aware: [true]
+        query_args:
+          ef: [40, 50, 64, 80, 100, 128, 160, 200, 256, 320, 400, 512, 640, 800, 1000]
+          rerank: [100, 200, 400]
+  euclidean:
+  - name: warm
+    module: vibe.algorithms.warm
+    constructor: WARM
+    singularity_image: warm
+    disabled: false
+    ood: true
+    base_args: ['@metric']
+    run_groups:
+      base:
+        args:
+          degree: [32, 48, 64, 96]
+          build_ef: [500]
+          code_bits: [8]
+          query_aware: [true]
+        query_args:
+          ef: [40, 50, 64, 80, 100, 128, 160, 200, 256, 320, 400, 512, 640, 800, 1000]
+          rerank: [100, 200, 400]
+  ip:
+  - name: warm
+    module: vibe.algorithms.warm
+    constructor: WARM
+    singularity_image: warm
+    disabled: false
+    ood: true
+    base_args: ['@metric']
+    run_groups:
+      base:
+        args:
+          degree: [32, 48, 64, 96]
+          build_ef: [500]
+          code_bits: [8]
+          query_aware: [true]
+        query_args:
+          ef: [64, 80, 100, 128, 160, 200, 256, 320, 400, 512, 640, 800, 1000, 1500, 2000]
+          rerank: [200, 400, 1000]
