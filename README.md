@@ -288,4 +288,4 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [ScaNN](https://github.com/google-research/google-research/tree/master/scann) | 1.4.2 |
 | [SymphonyQG](https://github.com/VectorDB-NTU/RaBitQ-Library) | 0.3.7 |
 | [Vamana (DiskANN)](https://github.com/microsoft/DiskANN) | 0.7.0 |
-| [WARM](https://github.com/writerslogic/warm) | git+12611a9 |
+| [WARM](https://github.com/writerslogic/warm) | git+af8d401 |
