@@ -284,6 +284,7 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [PDX](https://github.com/cwida/PDX) | git+93531b9 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.6.0 |
+| [QA-ScaNN](https://github.com/HNSWbeatsLSH/QA-ScaNN) | 0.1.1 |
 | [RoarGraph](https://github.com/matchyc/RoarGraph) | git+f2b49b6 |
 | [ScaNN](https://github.com/google-research/google-research/tree/master/scann) | 1.4.2 |
 | [SymphonyQG](https://github.com/VectorDB-NTU/RaBitQ-Library) | 0.3.7 |

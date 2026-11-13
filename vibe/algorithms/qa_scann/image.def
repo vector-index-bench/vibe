@@ -1,0 +1,24 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  QA_SCANN_REPO=https://github.com/HNSWbeatsLSH/QA-ScaNN.git
+  QA_SCANN_REF=v0.1.1
+
+  apt-get update
+  apt-get install -y --no-install-recommends clang-19 lld-19 llvm-19 rsync
+
+  git clone "$QA_SCANN_REPO" /qa-scann
+  cd /qa-scann
+  git config --global --add safe.directory /qa-scann
+  git checkout "$QA_SCANN_REF"
+
+  # the patched ScaNN 1.4.2 vendored in third_party/scann, built from source as
+  # ScaNN's README describes (Clang 19, Bazel 7.6.1, TensorFlow 2.20 for
+  # configure.py in a throwaway venv); the wheel goes into the image's Python,
+  # which is passed as an absolute path so it is not resolved inside that venv
+  CC=clang-19 CXX=clang++-19 AR=llvm-ar-19 PYTHON="$(command -v python)" bash scripts/build_scann.sh
+  pip install --no-cache-dir .
+  cd /
+  rm -rf /qa-scann /root/.cache/bazel
+  python -c "import scann, qa_scann" || { echo "scann or qa_scann is not importable"; exit 1; }
