@@ -1,0 +1,30 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  WARM_REV=af8d4017c6157688359dc2e31cc461fb3f28fa8e
+
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.96.0
+  export PATH="$HOME/.cargo/bin:$PATH"
+  pip install --no-cache-dir maturin==1.15.0
+
+  git clone https://github.com/writerslogic/warm.git /tmp/warm
+  cd /tmp/warm
+  git checkout "$WARM_REV"
+  # Fixed x86-64-v3 baseline (AVX2/FMA/BMI2), not target-cpu=native: install.sh builds the .sif
+  # wherever it is invoked and the image is reused on other run nodes, so a native build on a
+  # newer build host could emit instructions that fault on an older run node. The qgraph kernels
+  # choose AVX2, AVX-VNNI, AVX-512F/VL and AVX-512 VNNI paths at run time
+  # (is_x86_feature_detected), so those kernels still run wherever the CPU has them; v3 only sets
+  # the code generation of the non-kernel code. aarch64 keeps the default target (its dotprod
+  # kernels are compile-time gated). Profile-guided optimization is not used.
+  case "$(uname -m)" in
+    x86_64) WARM_RUSTFLAGS="-C target-cpu=x86-64-v3" ;;
+    *) WARM_RUSTFLAGS="" ;;
+  esac
+  RUSTFLAGS="$WARM_RUSTFLAGS" maturin build --release --locked --out /tmp/warm-dist
+  pip install --no-cache-dir /tmp/warm-dist/*.whl
+  cd /
+  rm -rf /tmp/warm /tmp/warm-dist "$HOME/.cargo" "$HOME/.rustup"
+
+  python -c 'from writerslogic_warm import VectorIndex; print(VectorIndex())'
