@@ -1,0 +1,8 @@
+Bootstrap: localimage
+From: base.sif
+
+%post
+  pip install --no-cache-dir "annexdb==0.3.0"
+
+%environment
+  export LC_ALL=C
