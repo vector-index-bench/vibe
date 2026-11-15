@@ -1,0 +1,16 @@
+float:
+  ip:
+    - name: hingezero-support-lab
+      module: vibe.algorithms.hingezero_support
+      constructor: HingeZeroLearnedSupport
+      singularity_image: hingezero_support
+      disabled: false
+      gpu: false
+      ood: true
+      base_args: ['@metric']
+      run_groups:
+        learned:
+          args:
+            field_size: [256]
+          query_args:
+            pool_size: [32768]
