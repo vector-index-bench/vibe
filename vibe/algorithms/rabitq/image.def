@@ -7,7 +7,7 @@ From: base.sif
   cd /RaBitQ-Library || exit 1
   git config --global --add safe.directory /RaBitQ-Library
 
-  micromamba install -y -q -c conda-forge -c pytorch python=3.12 faiss-cpu=1.14.3
+  micromamba install -y -q --channel-priority flexible -c conda-forge -c pytorch python=3.12 faiss-cpu=1.16.0
   micromamba clean --all --yes
 
   pip install --no-cache-dir scikit-build-core
