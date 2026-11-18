@@ -557,3 +557,35 @@ class FaissNSGQ(Faiss):
 
     def __str__(self):
         return "FaissNSGQ(degree=%d, L=%d)" % (self.degree, self.index.nsg.search_L)
+
+
+class FaissPiPNN(Faiss):
+    def __init__(self, metric, degree):
+        self.metric = metric
+        self.degree = degree
+
+    def fit(self, X):
+        faiss_metric = {
+            "euclidean": faiss.METRIC_L2,
+            "ip": faiss.METRIC_INNER_PRODUCT,
+            "cosine": faiss.METRIC_INNER_PRODUCT,
+            "normalized": faiss.METRIC_INNER_PRODUCT,
+        }[self.metric]
+        faiss.omp_set_num_threads(1)
+        if self.metric == "cosine":
+            X = np.array(X, dtype=np.float32, order="C", copy=True)
+            faiss.normalize_L2(X)
+
+        self.index = faiss.IndexPiPNNFlat(X.shape[1], self.degree, faiss_metric)
+        self.index.pipnn.reservoir_size = max(self.index.pipnn.reservoir_size, self.degree)
+        self.index.add(X)
+
+    def set_query_arguments(self, search_L):
+        self.index.pipnn.search_L = search_L
+
+    def query(self, v, n):
+        ids = super().query(v, n)
+        return ids[ids >= 0]
+
+    def __str__(self):
+        return f"FaissPiPNN(degree={self.degree}, L={self.index.pipnn.search_L})"
