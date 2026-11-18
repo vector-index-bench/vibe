@@ -2,5 +2,5 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  micromamba install -y -q -c conda-forge -c pytorch python=3.12 faiss-cpu=1.14.3
+  micromamba install -y -q --channel-priority flexible -c conda-forge -c pytorch python=3.12 faiss-cpu=1.16.0
   micromamba clean --all --yes

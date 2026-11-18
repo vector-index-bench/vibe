@@ -37,7 +37,8 @@ class MLANN(BaseANN):
             v = v.astype(np.float32)
         if self.metric == "cosine":
             v = v / np.linalg.norm(v)
-        return self.index.ann(v, n, self.voting_threshold, self.dist, return_distances=False)
+        ids = self.index.ann(v, n, self.voting_threshold, self.dist, return_distances=False)
+        return ids[ids >= 0]
 
     def __str__(self):
         return "MLANN(type=%s, n_trees=%d, depth=%d, voting_thresh=%g)" % (
