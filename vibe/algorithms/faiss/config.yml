@@ -295,3 +295,15 @@ float:
           direct_sq: [0]
         query_args:
           search_L: [32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]
+  - base_args: ['@metric']
+    constructor: FaissPiPNN
+    disabled: false
+    singularity_image: faiss
+    module: vibe.algorithms.faiss
+    name: pipnn(faiss)
+    run_groups:
+      base:
+        args:
+          degree: [8, 12, 16, 24, 36, 48, 64, 96]
+        query_args:
+          search_L: [32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 384, 448]

@@ -289,6 +289,7 @@ Deprecated datasets will remain available, but their benchmark results will not 
 | [NSG](https://github.com/facebookresearch/faiss) | 1.16.0 |
 | [PAG](https://github.com/KejingLu-810/PAG) | git+ee34ed7 |
 | [PDX](https://github.com/cwida/PDX) | git+ffe79a5 |
+| [PiPNN (Faiss)](https://github.com/facebookresearch/faiss) | 1.16.0 |
 | [PUFFINN](https://github.com/puffinn/puffinn) | git+fd86b0d |
 | [PyNNDescent](https://github.com/lmcinnes/pynndescent) | 0.7.0 |
 | [QA-ScaNN](https://github.com/HNSWbeatsLSH/QA-ScaNN) | 0.1.1 |
