@@ -6,6 +6,7 @@ float:
     singularity_image: falconnpp
     module: vibe.algorithms.falconnpp
     name: falconnpp
+    tags: [hashing]
     run_groups:
       falconnpp:
         args:

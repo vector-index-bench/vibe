@@ -10,6 +10,10 @@ from vibe.algorithms.base.module import BaseANN
 
 from .yaml import safe_load, YAMLError
 
+# Tags describing the underlying approach of an algorithm. Every algorithm
+# configuration must list the tags that apply to it.
+ALGORITHM_TAGS = ["graph", "clustering", "tree", "hashing", "quantization"]
+
 
 class Definition:
     def __init__(
@@ -23,6 +27,7 @@ class Definition:
         disabled: bool,
         ood: bool,
         gpu: bool,
+        tags: List[str],
     ):
         self.algorithm = algorithm
         self.constructor = constructor
@@ -33,6 +38,7 @@ class Definition:
         self.disabled = disabled
         self.ood = ood
         self.gpu = gpu
+        self.tags = tags
 
     def __repr__(self):
         return (
@@ -45,7 +51,8 @@ class Definition:
             f"query_argument_groups={self.query_argument_groups!r}, "
             f"disabled={self.disabled!r}, "
             f"ood={self.ood!r}, "
-            f"gpu={self.gpu!r}"
+            f"gpu={self.gpu!r}, "
+            f"tags={self.tags!r}"
             f")"
         )
 
@@ -62,6 +69,7 @@ class Definition:
             and self.disabled == other.disabled
             and self.ood == other.ood
             and self.gpu == other.gpu
+            and self.tags == other.tags
         )
 
 
@@ -336,15 +344,25 @@ def create_definitions_from_algorithm(
         count (int, optional): Count of the definitions to be created. Defaults to 10.
 
     Raises:
-        Exception: If the algorithm does not define "singularity_image", "module" or "constructor" properties.
+        Exception: If the algorithm does not define "singularity_image", "module", "constructor" or "tags"
+            properties, or if "tags" contains an unknown tag.
 
     Returns:
         List[Definition]: A list of definitions created from the algorithm.
     """
-    required_properties = ["singularity_image", "module", "constructor"]
+    required_properties = ["singularity_image", "module", "constructor", "tags"]
     missing_properties = [prop for prop in required_properties if prop not in algo]
     if missing_properties:
         raise ValueError(f"Algorithm {name} is missing the following properties: {', '.join(missing_properties)}")
+
+    tags = algo["tags"]
+    if not isinstance(tags, list) or not tags:
+        raise ValueError(f"Algorithm {name} must specify a non-empty list of tags")
+    unknown_tags = [tag for tag in tags if tag not in ALGORITHM_TAGS]
+    if unknown_tags:
+        raise ValueError(
+            f"Algorithm {name} has unknown tags: {', '.join(unknown_tags)} (valid tags: {', '.join(ALGORITHM_TAGS)})"
+        )
 
     base_args = algo.get("base_args", [])
 
@@ -375,6 +393,7 @@ def create_definitions_from_algorithm(
                     disabled=algo.get("disabled", False),
                     ood=algo.get("ood", False),
                     gpu=algo.get("gpu", False),
+                    tags=tags,
                 )
             )
     return definitions

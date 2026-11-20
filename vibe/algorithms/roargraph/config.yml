@@ -7,6 +7,7 @@ float:
     singularity_image: roargraph
     module: vibe.algorithms.roargraph
     name: roargraph
+    tags: [graph]
     run_groups:
       roargraph:
         args:

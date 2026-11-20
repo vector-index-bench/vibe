@@ -6,6 +6,7 @@ float:
     singularity_image: hnswlib
     module: vibe.algorithms.hnswlib
     name: hnswlib
+    tags: [graph]
     run_groups:
       base:
         args:

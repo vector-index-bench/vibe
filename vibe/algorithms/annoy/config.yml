@@ -6,6 +6,7 @@ binary:
     singularity_image: annoy
     module: vibe.algorithms.annoy
     name: annoy
+    tags: [tree]
     run_groups:
       annoy:
         args:
@@ -20,6 +21,7 @@ float:
     singularity_image: annoy
     module: vibe.algorithms.annoy
     name: annoy
+    tags: [tree]
     run_groups:
       annoy:
         args:

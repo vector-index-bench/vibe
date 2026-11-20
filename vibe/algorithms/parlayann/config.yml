@@ -6,6 +6,7 @@ uint8:
     singularity_image: parlayann
     module: vibe.algorithms.parlayann
     name: vamana(parlayann)
+    tags: [graph]
     run_groups:
       parlayann-64:
         args:
@@ -29,6 +30,7 @@ float:
     singularity_image: parlayann
     module: vibe.algorithms.parlayann
     name: vamana(parlayann)
+    tags: [graph]
     run_groups:
       parlayann-64:
         args:
@@ -51,6 +53,7 @@ float:
     singularity_image: parlayann
     module: vibe.algorithms.parlayann
     name: vamana(parlayann)
+    tags: [graph]
     run_groups:
       parlayann-64:
         args:
@@ -73,6 +76,7 @@ float:
     singularity_image: parlayann
     module: vibe.algorithms.parlayann
     name: vamana(parlayann)
+    tags: [graph]
     run_groups:
       parlayann-64:
         args:
@@ -95,6 +99,7 @@ float:
     singularity_image: parlayann
     module: vibe.algorithms.parlayann
     name: vamana(parlayann)
+    tags: [graph]
     run_groups:
       parlayann-64:
         args:

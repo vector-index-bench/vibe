@@ -6,6 +6,7 @@ uint8:
     singularity_image: svs
     module: vibe.algorithms.svs
     name: vamana(svs)
+    tags: [graph]
     run_groups:
       svs-64:
         args:
@@ -29,6 +30,7 @@ float:
     singularity_image: svs
     module: vibe.algorithms.svs
     name: vamana(svs)
+    tags: [graph]
     run_groups:
       svs-64:
         args:
@@ -50,6 +52,7 @@ float:
     singularity_image: svs
     module: vibe.algorithms.svs
     name: vamana-lvq(svs)
+    tags: [graph, quantization]
     run_groups:
       svs-64:
         args:
@@ -71,6 +74,7 @@ float:
     singularity_image: svs
     module: vibe.algorithms.svs
     name: vamana-leanvec(svs)
+    tags: [graph, quantization]
     run_groups:
       svs-64:
         args:

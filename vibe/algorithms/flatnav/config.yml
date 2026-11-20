@@ -6,6 +6,7 @@ uint8:
     singularity_image: flatnav
     module: vibe.algorithms.flatnav
     name: flatnav
+    tags: [graph]
     run_groups:
       base:
         args:
@@ -21,6 +22,7 @@ float:
     singularity_image: flatnav
     module: vibe.algorithms.flatnav
     name: flatnav
+    tags: [graph]
     run_groups:
       base:
         args:

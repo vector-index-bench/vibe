@@ -7,6 +7,7 @@ float:
     singularity_image: faiss_gpu
     module: vibe.algorithms.faiss_gpu
     name: faiss-gpu-ivf
+    tags: [clustering]
     run_groups:
       base-512:
         args:
@@ -45,6 +46,7 @@ float:
     singularity_image: faiss_gpu
     module: vibe.algorithms.faiss_gpu
     name: faiss-gpu-ivfpq
+    tags: [clustering, quantization]
     run_groups:
       base-512:
         args:

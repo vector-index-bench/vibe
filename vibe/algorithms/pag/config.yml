@@ -6,6 +6,7 @@ float:
     singularity_image: pag
     module: vibe.algorithms.pag
     name: pag
+    tags: [graph]
     run_groups:
       base:
         args:

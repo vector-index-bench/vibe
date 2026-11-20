@@ -7,6 +7,7 @@ float:
     singularity_image: qa_scann
     module: vibe.algorithms.qa_scann
     name: qa-scann
+    tags: [clustering, quantization]
     run_groups:
       p1:
         args:

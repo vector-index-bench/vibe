@@ -6,6 +6,7 @@ uint8:
     singularity_image: pdx
     module: vibe.algorithms.pdx
     name: pdx
+    tags: [clustering, quantization]
     run_groups:
       tree-sq8:
         args:
@@ -24,6 +25,7 @@ float:
     singularity_image: pdx
     module: vibe.algorithms.pdx
     name: pdx
+    tags: [clustering, quantization]
     run_groups:
       tree-sq8:
         args:

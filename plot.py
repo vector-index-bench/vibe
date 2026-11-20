@@ -26,8 +26,8 @@ import seaborn as sns
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
-from vibe.definitions import get_definitions
-from vibe.main import filter_disabled_algorithms, filter_algorithms_by_device
+from vibe.definitions import ALGORITHM_TAGS, get_definitions
+from vibe.main import filter_disabled_algorithms, filter_algorithms_by_device, filter_algorithms_by_tags
 
 # The list of in-distribution datasets
 ID_DATASETS = [
@@ -1782,6 +1782,20 @@ if __name__ == "__main__":
     aparser.add_argument("--dataset", help="dataset", default="agnews-mxbai-1024-euclidean")
     aparser.add_argument("--selected", help="plot results for only selected algorithms", action="store_true")
     aparser.add_argument("--gpu", help="plot results for GPU algorithms", action="store_true")
+    aparser.add_argument(
+        "--tags",
+        nargs="+",
+        choices=ALGORITHM_TAGS,
+        metavar="TAG",
+        help=f"plot results for only algorithms that have all of the given tags ({', '.join(ALGORITHM_TAGS)})",
+    )
+    aparser.add_argument(
+        "--exclude-tags",
+        nargs="+",
+        choices=ALGORITHM_TAGS,
+        metavar="TAG",
+        help="do not plot results for algorithms that have any of the given tags",
+    )
     aparser.add_argument("--pca", help="add PCA plot (only applicable for pareto plot)", action="store_true")
     aparser.add_argument("--recall", help="recall level for plot", default=0.95)
     aparser.add_argument("--count", help="number of nearest neighbors (k) to use", default=100)
@@ -1848,6 +1862,10 @@ if __name__ == "__main__":
         ]
     else:
         algorithms = all_algorithms
+
+    if args.tags or args.exclude_tags:
+        tagged = set(d.algorithm for d in filter_algorithms_by_tags(definitions, args.tags, args.exclude_tags))
+        algorithms = [algorithm for algorithm in algorithms if algorithm in tagged]
 
     if args.plot_type == "pareto":
         if args.gpu:

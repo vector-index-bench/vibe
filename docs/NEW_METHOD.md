@@ -95,6 +95,7 @@ Create `config.yml`:
 float:
   any:
   - name: example
+    tags: [graph]
     module: vibe.algorithms.example
     constructor: ExampleANN
     singularity_image: example
@@ -112,6 +113,8 @@ float:
 ```
 
 Fill in `name`, `module`, `constructor`, and `singularity_image` (usually just the name of the method for each).
+
+`tags` lists the approaches the method is built on, so that methods can be compared against others of the same kind. Use every tag that applies from `graph`, `clustering`, `tree`, `hashing`, and `quantization`. For example, HNSW is `[graph]`, a graph index that searches over quantized vectors is `[graph, quantization]`, and IVF-PQ is `[clustering, quantization]`. Use `quantization` only when the index searches over lossy compressed vectors.
 
 The outer key selects the supported datatype: `float` for regular float vectors, `int8`, `uint8`, or `binary` for quantized vectors. The next key is a supported distance (`euclidean`, `cosine`, `ip`, `normalized`, or `hamming`) or `any` if the method supports all distances.
 

@@ -5,9 +5,16 @@ import os
 import glob
 import random
 import sys
-from typing import List
+from typing import List, Optional
 
-from .definitions import Definition, InstantiationStatus, algorithm_status, get_definitions, list_algorithms
+from .definitions import (
+    ALGORITHM_TAGS,
+    Definition,
+    InstantiationStatus,
+    algorithm_status,
+    get_definitions,
+    list_algorithms,
+)
 from .results import is_run
 from .util import download, replace
 from .workers import create_workers_and_execute
@@ -69,6 +76,27 @@ def filter_algorithms_by_device(definitions: List[Definition], gpu: bool) -> Lis
         return [d for d in definitions if d.gpu]
     else:
         return [d for d in definitions if not d.gpu]
+
+
+def filter_algorithms_by_tags(
+    definitions: List[Definition], tags: Optional[List[str]], exclude_tags: Optional[List[str]]
+) -> List[Definition]:
+    """
+    Filters algorithms based on the tags describing their underlying approach.
+
+    Args:
+        definitions (List[Definition]): A list of algorithm definitions.
+        tags (Optional[List[str]]): If given, keep only algorithms that have all of these tags.
+        exclude_tags (Optional[List[str]]): If given, discard algorithms that have any of these tags.
+
+    Returns:
+        List[Definition]: A list of algorithm definitions filtered according to the specified tags.
+    """
+    if tags:
+        definitions = [d for d in definitions if set(tags).issubset(d.tags)]
+    if exclude_tags:
+        definitions = [d for d in definitions if not set(exclude_tags).intersection(d.tags)]
+    return definitions
 
 
 def limit_algorithms(definitions: List[Definition], limit: int) -> List[Definition]:
@@ -159,6 +187,20 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("--algorithm", metavar="NAME", help="run only the named algorithm", default=None)
     parser.add_argument("--module", metavar="NAME", help="run only algorithms in the named module", default=None)
+    parser.add_argument(
+        "--tags",
+        nargs="+",
+        choices=ALGORITHM_TAGS,
+        metavar="TAG",
+        help=f"run only algorithms that have all of the given tags ({', '.join(ALGORITHM_TAGS)})",
+    )
+    parser.add_argument(
+        "--exclude-tags",
+        nargs="+",
+        choices=ALGORITHM_TAGS,
+        metavar="TAG",
+        help="do not run algorithms that have any of the given tags",
+    )
     parser.add_argument(
         "--list-algorithms", help="print the names of all known algorithms and exit", action="store_true"
     )
@@ -325,6 +367,10 @@ def main():
     if args.algorithm:
         logger.info(f"running only {args.algorithm}")
         definitions = [d for d in definitions if d.algorithm == args.algorithm]
+
+    if args.tags or args.exclude_tags:
+        logger.info(f"running only algorithms with tags {args.tags} and without tags {args.exclude_tags}")
+        definitions = filter_algorithms_by_tags(definitions, args.tags, args.exclude_tags)
 
     if not args.local:
         definitions = filter_by_available_singularity_images(definitions, args.image_dir)

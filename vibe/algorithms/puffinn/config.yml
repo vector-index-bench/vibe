@@ -6,6 +6,7 @@ float:
     singularity_image: puffinn
     module: vibe.algorithms.puffinn
     name: puffinn
+    tags: [hashing]
     run_groups:
       base:
         args:
@@ -20,6 +21,7 @@ float:
     singularity_image: puffinn
     module: vibe.algorithms.puffinn
     name: puffinn
+    tags: [hashing]
     run_groups:
       base:
         args:

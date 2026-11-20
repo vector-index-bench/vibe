@@ -7,6 +7,7 @@ float:
     singularity_image: ggnn
     module: vibe.algorithms.ggnn
     name: ggnn
+    tags: [graph]
     run_groups:
       base:
         args:

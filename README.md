@@ -130,6 +130,8 @@ Common options for run.py:
 - `--parallelism n`: Use `n` processes for benchmarking.
 - `--module mod`: Run the benchmark only for algorithms in module (library) `mod`.
 - `--algorithm algo`: Run the benchmark for only algorithm `algo`.
+- `--tags tag [tag ...]`: Run the benchmark only for algorithms that have all of the given tags (`graph`, `clustering`, `tree`, `hashing`, `quantization`).
+- `--exclude-tags tag [tag ...]`: Skip algorithms that have any of the given tags.
 - `--count k`: Run the benchmarks using `k` nearest neighbors (default 100).
 - `--gpu`: Run the benchmark in GPU mode.
 
@@ -158,6 +160,11 @@ Before plotting, the current results must first be exported:
 The results for a dataset can then plotted with e.g.:
 ```sh
 ./plot.sh --dataset agnews-mxbai-1024-euclidean
+```
+
+To compare only algorithms of the same kind, use `--tags` and `--exclude-tags`. For example, to plot only graph methods that do not use quantization:
+```sh
+./plot.sh --dataset agnews-mxbai-1024-euclidean --tags graph --exclude-tags quantization
 ```
 
 To plot the radar chart above, use:

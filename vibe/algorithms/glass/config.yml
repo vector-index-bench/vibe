@@ -6,6 +6,7 @@ float:
     singularity_image: glass
     module: vibe.algorithms.glass
     name: glass
+    tags: [graph, quantization]
     run_groups:
       glass:
         args:

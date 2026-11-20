@@ -348,7 +348,7 @@ def run_from_cmdline():
 
     definition = Definition(
         algorithm=args.algorithm,
-        singularity_image=None,  # not needed
+        singularity_image=None,
         module=args.module,
         constructor=args.constructor,
         arguments=algo_args,
@@ -356,5 +356,6 @@ def run_from_cmdline():
         disabled=False,
         ood=args.ood,
         gpu=args.gpu,
+        tags=[],
     )
     run(definition, args.dataset, args.count, args.runs)

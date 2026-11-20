@@ -7,6 +7,7 @@ uint8:
     singularity_image: cuvs
     module: vibe.algorithms.cuvs
     name: cuvs-ivf
+    tags: [clustering]
     run_groups:
       base-512:
         args:
@@ -40,6 +41,7 @@ uint8:
     singularity_image: cuvs
     module: vibe.algorithms.cuvs
     name: cuvs-ivfpq
+    tags: [clustering, quantization]
     run_groups:
       base-512:
         args:
@@ -80,6 +82,7 @@ uint8:
     singularity_image: cuvs
     module: vibe.algorithms.cuvs
     name: cuvs-cagra
+    tags: [graph]
     run_groups:
       base:
         args:
@@ -97,6 +100,7 @@ float:
     singularity_image: cuvs
     module: vibe.algorithms.cuvs
     name: cuvs-ivf
+    tags: [clustering]
     run_groups:
       base-512:
         args:
@@ -130,6 +134,7 @@ float:
     singularity_image: cuvs
     module: vibe.algorithms.cuvs
     name: cuvs-ivfpq
+    tags: [clustering, quantization]
     run_groups:
       base-512:
         args:
@@ -170,6 +175,7 @@ float:
     singularity_image: cuvs
     module: vibe.algorithms.cuvs
     name: cuvs-cagra
+    tags: [graph]
     run_groups:
       degree-4:
         args:

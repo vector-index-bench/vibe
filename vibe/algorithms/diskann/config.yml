@@ -6,6 +6,7 @@ uint8:
     singularity_image: diskann
     module: vibe.algorithms.diskann
     name: vamana(diskann)
+    tags: [graph]
     run_groups:
       diskann-64:
         args:
@@ -29,6 +30,7 @@ int8:
     singularity_image: diskann
     module: vibe.algorithms.diskann
     name: vamana(diskann)
+    tags: [graph]
     run_groups:
       diskann-64:
         args:
@@ -52,6 +54,7 @@ float:
     singularity_image: diskann
     module: vibe.algorithms.diskann
     name: vamana(diskann)
+    tags: [graph]
     run_groups:
       diskann-64:
         args:

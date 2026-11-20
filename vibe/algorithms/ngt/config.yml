@@ -6,6 +6,7 @@ binary:
     singularity_image: ngt
     module: vibe.algorithms.ngt
     name: ngt-onng
+    tags: [graph]
     run_groups:
       onng:
         args:
@@ -41,6 +42,7 @@ uint8:
     singularity_image: ngt
     module: vibe.algorithms.ngt
     name: ngt-onng
+    tags: [graph]
     run_groups:
       onng:
         args:
@@ -76,6 +78,7 @@ float:
     singularity_image: ngt
     module: vibe.algorithms.ngt
     name: ngt-qg
+    tags: [graph, quantization]
     run_groups:
       parameter_set_0:
         args:
@@ -259,6 +262,7 @@ float:
     singularity_image: ngt
     module: vibe.algorithms.ngt
     name: ngt-onng
+    tags: [graph]
     run_groups:
       onng:
         args:

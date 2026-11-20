@@ -8,6 +8,7 @@ float:
     singularity_image: lorann_gpu
     module: vibe.algorithms.lorann_gpu
     name: lorann-gpu
+    tags: [clustering]
     run_groups:
       lorann:
         args:

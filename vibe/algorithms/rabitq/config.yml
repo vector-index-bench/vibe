@@ -6,6 +6,7 @@ float:
     singularity_image: rabitq
     module: vibe.algorithms.rabitq
     name: rabitq-ivf
+    tags: [clustering, quantization]
     run_groups:
       base-512:
         args:
@@ -41,6 +42,7 @@ float:
     singularity_image: rabitq
     module: vibe.algorithms.rabitq
     name: rabitq-hnsw
+    tags: [graph, quantization]
     run_groups:
       base:
         args:
@@ -57,6 +59,7 @@ float:
     singularity_image: rabitq
     module: vibe.algorithms.rabitq
     name: symphonyqg
+    tags: [graph, quantization]
     run_groups:
       base:
         args:

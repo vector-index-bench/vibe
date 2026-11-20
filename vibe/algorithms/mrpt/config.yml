@@ -7,6 +7,7 @@ float:
     singularity_image: mrpt
     module: vibe.algorithms.mrpt
     name: mrpt
+    tags: [tree]
     run_groups:
       mrpt:
         args: {count: '@count'}

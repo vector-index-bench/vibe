@@ -6,6 +6,7 @@ binary:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivf(faiss)
+    tags: [clustering]
     run_groups:
       base-512:
         args:
@@ -33,6 +34,7 @@ binary:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: hnsw(faiss)
+    tags: [graph]
     run_groups:
       base:
         args:
@@ -48,6 +50,7 @@ uint8:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivf(faiss)
+    tags: [clustering]
     run_groups:
       base-512:
         args:
@@ -75,6 +78,7 @@ uint8:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: hnswq(faiss)
+    tags: [graph]
     run_groups:
       base:
         args:
@@ -89,6 +93,7 @@ uint8:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: nsgq(faiss)
+    tags: [graph]
     run_groups:
       base:
         args:
@@ -104,6 +109,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivf(faiss)
+    tags: [clustering]
     run_groups:
       base-512:
         args:
@@ -131,6 +137,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivf-rabitq(faiss)
+    tags: [clustering, quantization]
     run_groups:
       base-512:
         args:
@@ -166,6 +173,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivf-turboquant(faiss)
+    tags: [clustering, quantization]
     run_groups:
       base-512:
         args:
@@ -201,6 +209,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: ivfpqfs(faiss)
+    tags: [clustering, quantization]
     run_groups:
       base-512:
         args:
@@ -236,6 +245,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: hnsw(faiss)
+    tags: [graph]
     run_groups:
       base:
         args:
@@ -249,6 +259,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: hnswq(faiss)
+    tags: [graph, quantization]
     run_groups:
       base:
         args:
@@ -263,6 +274,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: nsg(faiss)
+    tags: [graph]
     run_groups:
       base:
         args:
@@ -275,6 +287,7 @@ float:
     singularity_image: faiss
     module: vibe.algorithms.faiss
     name: nsgq(faiss)
+    tags: [graph, quantization]
     run_groups:
       base:
         args:
