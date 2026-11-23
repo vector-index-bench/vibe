@@ -1,4 +1,4 @@
-# kci_vec for VIBE (0.2.5): cosine / normalized, euclidean and inner product.
+# kci_vec for VIBE (0.2.15): cosine / normalized, euclidean and inner product.
 # Builds are single-threaded (module.py THREADS = 1; VIBE also pins the worker to one CPU). k = 100.
 # Args are positional in the order written (VIBE expands the dict in key order).
 float:
