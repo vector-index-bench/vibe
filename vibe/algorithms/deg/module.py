@@ -4,61 +4,26 @@ import numpy as np
 from ..base.module import BaseANN
 
 
-_VIBE_METRIC_KIND = {
-    "euclidean": "L2",
-    "cosine": "InnerProduct",
-    "ip": "InnerProduct",
-    "normalized": "InnerProduct",
-}
+class DEG(BaseANN):
+    """Dynamic Exploration Graph (DEG) using the high-level deglib.build + deglib.searcher API."""
 
-
-class _BaseDEG(BaseANN):
-    """Shared setup for DEG and QG adapters."""
-
-    def __init__(self, metric: str, k: int = 30, opt_target: str = "LowLID"):
+    def __init__(self, metric: str, k: int = 30):
         self.metric = metric.lower().strip()
-        if self.metric not in _VIBE_METRIC_KIND:
-            raise ValueError(f"Unsupported metric '{self.metric}'. Choose from: {list(_VIBE_METRIC_KIND.keys())}")
-
         self.k = int(k)
-        self.opt_target = opt_target
         self.eps_or_ef = 0.1
-        self._metric_kind = _VIBE_METRIC_KIND[self.metric]
-        self.build_metric = deglib.Metric[f"FP32_{self._metric_kind}"]
-        self.opt_enum = deglib.OptimizationTarget.resolve(self.opt_target)
-
-    def _prepare(self, X: np.ndarray) -> np.ndarray:
-        if self.metric == "cosine":
-            X = X / np.linalg.norm(X, axis=1, keepdims=True)
-        return np.ascontiguousarray(X, dtype=np.float32)
-
-    def _build_graph(self, X: np.ndarray) -> deglib.DynamicExplorationGraph:
-        return deglib.build(
-            X,
-            presort=True,
-            edges_per_vertex=self.k,
-            metric=self.build_metric,
-            optimization_target=self.opt_enum,
-            optimize=False,
-            threads=1,
-        )
-
-
-class DEG(_BaseDEG):
-    """Dynamic Exploration Graph (DEG) using Float32 throughout."""
-
-    def __init__(self, metric: str, k: int = 30, opt_target: str = "LowLID"):
-        super().__init__(metric=metric, k=k, opt_target=opt_target)
         self.searcher: deglib.Searcher | None = None
 
     def fit(self, X: np.ndarray):
-        """Builds the DEG graph in FP32 and prepares the Searcher."""
-        X = self._prepare(X)
-        graph = self._build_graph(X)
-        self.searcher = graph.to_searcher(
-            normalize_query=(self.metric == "cosine"),
+        """Builds the DEG graph and prepares an optimized Searcher."""
+        graph = deglib.build(
+            X,
+            edges_per_vertex=self.k,
+            metric=self.metric,
+            presort=True,
+            optimize=False,
             threads=1,
         )
+        self.searcher = deglib.searcher(graph, optimize=True, threads=1)
 
     def set_query_arguments(self, eps_or_ef: float):
         self.eps_or_ef = float(eps_or_ef)
@@ -71,37 +36,44 @@ class DEG(_BaseDEG):
             threads=1,
             return_distances=False,
             unsorted=True,
-        )
+        ).indices
 
     def __str__(self) -> str:
-        ef = f"ef={int(round(self.eps_or_ef))}" if self.eps_or_ef >= 1.0 else f"eps={self.eps_or_ef}"
-        return f"DEG(k={self.k}, opt={self.opt_target}, {ef})"
+        param = f"ef={int(round(self.eps_or_ef))}" if self.eps_or_ef >= 1.0 else f"eps={self.eps_or_ef}"
+        return f"DEG(k={self.k}, {param})"
 
 
-class QG(_BaseDEG):
-    """Quantized DEG (DEG-QG): quantized graph search (Uint4/Uint7/Int8) with FP16 reranking."""
+class QG(BaseANN):
+    """Quantized DEG (DEG-QG): 4bit / 8bit quantized graph search with FP16 reranking."""
 
-    def __init__(self, metric: str, k: int = 30, opt_target: str = "LowLID"):
-        super().__init__(metric=metric, k=k, opt_target=opt_target)
-        quant_list = ["Uint4_L2", "Uint7_L2", "Int8_InnerProduct"]
-        self.quant_metrics = {q: deglib.Metric.resolve(q) for q in quant_list}
-        self.rerank_metric = deglib.Metric[f"FP16_{self._metric_kind}"]
+    def __init__(self, metric: str, k: int = 30):
+        self.metric = metric.lower().strip()
+        self.k = int(k)
+        self.eps_or_ef = 0.1
+        self.quants = ("4bit", "8bit")
         self.rerank_size_factor = 1.0
         self.searchers: dict[str, deglib.Searcher] = {}
         self.active_searcher: deglib.Searcher | None = None
 
     def fit(self, X: np.ndarray):
-        """Builds the FP32 base graph once, creates a shared FP16 reranker, and builds one Searcher per quant."""
-        X = self._prepare(X)
-        base_graph = self._build_graph(X)
-        reranker = base_graph.to_reranker(self.rerank_metric, threads=1)
+        """Builds the base graph once, creates a shared FP16 reranker, and builds one Searcher per quant."""
+        graph = deglib.build(
+            X,
+            edges_per_vertex=self.k,
+            metric=self.metric,
+            presort=True,
+            optimize=False,
+            threads=1,
+        )
+        reranker = deglib.reranker(graph, compress="16bit", threads=1)
 
         self.searchers.clear()
-        for q_name, q_metric in self.quant_metrics.items():
-            self.searchers[q_name] = base_graph.to_searcher(
-                metric=q_metric,
+        for q_name in self.quants:
+            self.searchers[q_name] = deglib.searcher(
+                graph,
+                compress=q_name,
                 reranker=reranker,
-                normalize_query=(self.metric == "cosine"),
+                optimize=True,
                 threads=1,
             )
 
@@ -121,9 +93,9 @@ class QG(_BaseDEG):
             threads=1,
             return_distances=False,
             unsorted=True,
-        )
+        ).indices
 
     def __str__(self) -> str:
         q = self.active_searcher.graph.get_metric().name if self.active_searcher else "unfitted"
-        ef = f"ef={int(round(self.eps_or_ef))}" if self.eps_or_ef >= 1.0 else f"eps={self.eps_or_ef}"
-        return f"DEG-QG[{q}](k={self.k}, opt={self.opt_target}, rerank={self.rerank_size_factor}, {ef})"
+        param = f"ef={int(round(self.eps_or_ef))}" if self.eps_or_ef >= 1.0 else f"eps={self.eps_or_ef}"
+        return f"DEG-QG[{q}](k={self.k}, rerank={self.rerank_size_factor}, {param})"
