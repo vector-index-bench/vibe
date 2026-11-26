@@ -1,5 +1,4 @@
-# Grid dated 2026-10-23 (rationale: docs/benchmarks/VIBE.md in github.com/writerslogic/warm,
-# "Pre-registered OOD grid"). Arguments are positional in YAML order:
+# Grid dated 2026-10-23, fixed before the OOD runs. Arguments are positional in YAML order:
 # WARM(metric, degree, build_ef, code_bits, query_aware) and set_query_arguments(ef, rerank).
 # `ood: true` makes VIBE call fit_ood with the dataset's official learn split where the HDF5 file
 # has one (the build samples 32768 learn rows, numpy seed 24301; see module.py); sets without a
