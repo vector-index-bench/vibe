@@ -1,0 +1,14 @@
+Bootstrap: localimage
+From: base.sif
+
+# kci_vec: embedded vector search (C library, bound with ctypes). Source: https://github.com/KimYuki3/kci-vec-src (tag v0.2.15,
+# MIT). Installed here from the wheel built from that tag, version and checksum pinned (Linux x86-64;
+# cosine, euclidean and inner product); it carries an AVX-512 and an AVX2 library and picks one by the CPU at import.
+%post
+  WHL=kci_vec-0.2.15-py3-none-manylinux_2_35_x86_64.whl
+  cd /tmp
+  python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/KimYuki3/kci-vec-dist/releases/download/v0.2.15/$WHL', '$WHL')"
+  echo "6921c419f2bf048f235c46abd72e5ca16adc815bb6e694cc74cbeae01c0da551  $WHL" | sha256sum -c -
+  pip install --no-deps "./$WHL"
+  rm "$WHL"
+  python3 -c "import kci_vec, ctypes; p = kci_vec._find_lib(); ctypes.CDLL(p); print('kci_vec OK:', p)"
