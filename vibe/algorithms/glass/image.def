@@ -8,4 +8,20 @@ From: base.sif
   git config --global --add safe.directory /pyglass
   git reset --hard d2296ec447d2374ee8f88c6d3b85be1b1e434ad3
 
+  # Prevent byte-count overflow when loading 2 GiB or more of adjacency data.
+  git apply - <<'PATCH'
+diff --git a/glass/graph.hpp b/glass/graph.hpp
+--- a/glass/graph.hpp
++++ b/glass/graph.hpp
+@@ -144,7 +144,7 @@ struct Graph {
+         reader.read((char *)&N, 4);
+         reader.read((char *)&K, 4);
+         data = (node_t *)align_alloc((int64_t)N * K * 4, true, -1);
+-        reader.read((char *)data, N * K * 4);
++        reader.read((char *)data, static_cast<int64_t>(N) * K * 4);
+         if (reader.peek() != EOF) {
+             initializer = std::make_unique<HNSWInitializer>(N);
+             initializer->load(reader);
+PATCH
+
   pip install -v --no-build-isolation -e "python"
