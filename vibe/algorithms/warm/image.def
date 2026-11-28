@@ -2,7 +2,7 @@ Bootstrap: localimage
 From: base.sif
 
 %post
-  WARM_REV=005c27d42450bc9f606061af0ee7fdc3dea09181
+  WARM_REV=58a816b6aedf787f25f2497ecc35972a6bea9ebd
 
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.96.0
   export PATH="$HOME/.cargo/bin:$PATH"
